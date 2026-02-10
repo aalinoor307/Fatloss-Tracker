@@ -1250,5 +1250,76 @@ renderAll();
   settings = loadSettings();
   init();
 </script>
+
+<script>
+/* ===== v2 ADDITIONS =====
+1) Monthly versioned backups to Drive
+2) CSV export/import
+3) Dashboard KPIs: 7-day deficit, weight trend, adherence
+========================== */
+
+/* --- Monthly folder naming --- */
+function getMonthKey(d){
+  const dt = new Date(d||Date.now());
+  return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,'0');
+}
+
+/* --- Versioned filename --- */
+function versionedName(){
+  const m = getMonthKey();
+  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+  return `fatloss_${m}_${ts}.json`;
+}
+
+/* --- CSV Export --- */
+function exportCSV(){
+  const data = JSON.parse(localStorage.getItem("fatloss_log_v1")||"[]");
+  if(!data.length){ alert("No data"); return; }
+  const cols = Object.keys(data[0]);
+  const rows = [cols.join(",")].concat(
+    data.map(r=>cols.map(c=>`"${(r[c]??"").toString().replace(/"/g,'""')}"`).join(","))
+  );
+  const blob = new Blob([rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="fatloss_export.csv";
+  a.click();
+}
+
+/* --- CSV Import --- */
+function importCSV(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const lines=reader.result.split(/\r?\n/).filter(Boolean);
+    const head=lines.shift().split(",");
+    const data=lines.map(l=>{
+      const vals=l.split(",").map(v=>v.replace(/^"|"$/g,""));
+      const o={}; head.forEach((h,i)=>o[h]=vals[i]); return o;
+    });
+    localStorage.setItem("fatloss_log_v1", JSON.stringify(data));
+    location.reload();
+  };
+  reader.readAsText(file);
+}
+
+/* --- Dashboard KPIs --- */
+function computeKPIs(){
+  const d = JSON.parse(localStorage.getItem("fatloss_log_v1")||"[]");
+  const last7 = d.slice(-7);
+  if(!last7.length) return;
+  const avgDef = Math.round(last7.reduce((s,r)=>s+((r["Total Burn"]||0)-(r["Calories Eaten"]||0)),0)/last7.length);
+  const wtTrend = last7[0]["Weight (kg)"] && last7[last7.length-1]["Weight (kg)"]
+    ? (last7[last7.length-1]["Weight (kg)"] - last7[0]["Weight (kg)"]).toFixed(1)
+    : "—";
+  const adh = Math.round(100*last7.filter(r=>Math.abs((r["Calories Eaten"]||0)-(r["Calories Target"]||0))<=100).length/last7.length);
+
+  const set=(id,val)=>{const e=document.getElementById(id); if(e) e.textContent=val;};
+  set("kDef", avgDef);
+  set("kWt", wtTrend);
+  set("kAdh", adh+"%");
+}
+document.addEventListener("DOMContentLoaded", computeKPIs);
+</script>
+
 </body>
 </html>
