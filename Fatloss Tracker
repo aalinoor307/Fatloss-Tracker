@@ -79,6 +79,13 @@
 
   .ghost{background:transparent;border:1px solid rgba(0,0,0,.12);} 
 </style>
+
+<script>
+/* Locked Google credentials (same as Expense Tracker) */
+const GOOGLE_CLIENT_ID = "41189729388-rksho3qtsot9qv7h2g4c0s8q81ghub6u.apps.googleusercontent.com";
+const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
+</script>
+
 </head>
 <body>
 <div class="wrap">
