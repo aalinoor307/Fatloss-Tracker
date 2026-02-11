@@ -1303,19 +1303,43 @@ function importCSV(file){
 
 /* --- Dashboard KPIs --- */
 function computeKPIs(){
-  const d = JSON.parse(localStorage.getItem("fatloss_log_v1")||"[]");
-  const last7 = d.slice(-7);
-  if(!last7.length) return;
-  const avgDef = Math.round(last7.reduce((s,r)=>s+((r["Total Burn"]||0)-(r["Calories Eaten"]||0)),0)/last7.length);
-  const wtTrend = last7[0]["Weight (kg)"] && last7[last7.length-1]["Weight (kg)"]
-    ? (last7[last7.length-1]["Weight (kg)"] - last7[0]["Weight (kg)"]).toFixed(1)
-    : "—";
-  const adh = Math.round(100*last7.filter(r=>Math.abs((r["Calories Eaten"]||0)-(r["Calories Target"]||0))<=100).length/last7.length);
+  let d = JSON.parse(localStorage.getItem("fatloss_log_v1") || "[]");
 
-  const set=(id,val)=>{const e=document.getElementById(id); if(e) e.textContent=val;};
+  // 🔒 SAFETY: normalize data
+  if (!Array.isArray(d)) {
+    d = Object.values(d || {});
+  }
+
+  if (!d.length) return;
+
+  const last7 = d.slice(-7);
+
+  const avgDef = Math.round(
+    last7.reduce((s, r) => s + ((r["Total Burn"] || 0) - (r["Calories Eaten"] || 0)), 0)
+    / last7.length
+  );
+
+  const wtTrend =
+    last7[0]["Weight (kg)"] && last7[last7.length - 1]["Weight (kg)"]
+      ? (last7[last7.length - 1]["Weight (kg)"] - last7[0]["Weight (kg)"]).toFixed(1)
+      : "—";
+
+  const adh = Math.round(
+    100 * last7.filter(r =>
+      Math.abs((r["Calories Eaten"] || 0) - (r["Calories Target"] || 0)) <= 100
+    ).length / last7.length
+  );
+
+  const set = (id, val) => {
+    const e = document.getElementById(id);
+    if (e) e.textContent = val;
+  };
+
   set("kDef", avgDef);
   set("kWt", wtTrend);
-  set("kAdh", adh+"%");
+  set("kAdh", adh + "%");
+}
+
 }
 document.addEventListener("DOMContentLoaded", computeKPIs);
 </script>
