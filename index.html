@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fat Loss Log (11–14%)</title>
+<title>Body Composition Dashboard</title>
 <meta name="theme-color" content="#0b0f17" />
 <style>
   :root{
@@ -36,6 +36,9 @@
   .kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
   .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted)}
   .btns{display:flex;gap:8px;flex-wrap:wrap}
+.modebar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 8px}
+  .modebtn{padding:8px 12px;border-radius:999px;font-size:12px}
+  .modebtn.active{background:linear-gradient(135deg, rgba(74,163,255,.95), rgba(74,163,255,.55));border-color:transparent;color:#07131f;font-weight:700}
   button{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);padding:9px 12px;border-radius:12px;cursor:pointer;font-weight:600}
   button:hover{border-color:rgba(74,163,255,.55)}
   .primary{background:linear-gradient(135deg, rgba(74,163,255,.95), rgba(74,163,255,.55));border-color:transparent}
@@ -86,6 +89,7 @@ const GOOGLE_CLIENT_ID = "41189729388-rksho3qtsot9qv7h2g4c0s8q81ghub6u.apps.goog
 const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
 </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -93,11 +97,17 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
       <div>
-        <h1>Fat Loss Log (11–14%)</h1>
+        <h1>Body Composition Dashboard</h1>
         <div class="sub">Single-file tracker • Local-first (localStorage) • Calendar + KPI + easy import/export</div>
       </div>
     </div>
-    <div class="btns">
+    
+    <div class="modebar" role="group" aria-label="Program mode">
+      <button class="modebtn" data-mode="fatloss">Fat loss</button>
+      <button class="modebtn" data-mode="weightloss">Weight loss</button>
+      <button class="modebtn" data-mode="weightgain">Weight gain</button>
+    </div>
+<div class="btns">
       <button id="btnToday">Jump to Today</button>
       <button id="btnSettings">Targets / Rules</button>
       <button id="btnDrive" class="ghost">☁ Drive: Off</button>
@@ -159,7 +169,19 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
             <canvas id="calChart" width="800" height="240"></canvas>
           </div>
         </div>
+        
+        <div class="chartgrid">
+          <div>
+            <div class="small">Macros (today)</div>
+            <canvas id="macroPie" width="400" height="240"></canvas>
+          </div>
+          <div>
+            <div class="small">Adherence (7d)</div>
+            <canvas id="adhPie" width="400" height="240"></canvas>
+          </div>
+        </div>
         <div style="height:10px"></div>
+<div style="height:10px"></div>
         <div class="small">Tip: only the <b>Total Burn</b> field is needed to compute deficit. If you can’t see WHOOP calories, just enter your best estimate (or leave blank).</div>
       </div>
     </div>
@@ -320,6 +342,22 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
     <div class="pb">
       <div class="two">
         <div class="field">
+          <label>Program mode (preset)</label>
+          <select id="sMode">
+            <option value="fatloss">Fat loss (11–14% target)</option>
+            <option value="weightloss">Weight loss (general)</option>
+            <option value="weightgain">Weight gain (lean bulk)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Apply preset</label>
+          <button id="btnApplyMode" class="primary" style="width:100%">Apply</button>
+        </div>
+      </div>
+      <div style="height:10px"></div>
+
+      <div class="two">
+        <div class="field">
           <label>Rest day calories</label>
           <input id="sRest" type="number" />
         </div>
@@ -388,6 +426,7 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
   const LS_SETTINGS = "fatloss_settings_v1";
 
   const DEFAULT_SETTINGS = {
+    mode: "fatloss",
     phase: "Cut",
     cals_rest: 2300,
     cals_gym: 2500,
@@ -397,6 +436,13 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
     fat_g: 70,
     refeed_rule: "recovery3yellow"
   };
+
+  const MODE_PRESETS = {
+    fatloss:   { label:"Fat loss (11–14%)", phase:"Cut",     cals_rest:2300, cals_gym:2500, cals_sport:2700, cals_refeed:2900, protein_g:200, fat_g:70 },
+    weightloss:{ label:"Weight loss",       phase:"Cut",     cals_rest:2500, cals_gym:2700, cals_sport:2900, cals_refeed:3100, protein_g:190, fat_g:80 },
+    weightgain:{ label:"Weight gain",       phase:"Bulk",    cals_rest:3200, cals_gym:3500, cals_sport:3700, cals_refeed:3900, protein_g:190, fat_g:90 }
+  };
+
 
   function loadSettings() {
     try {
@@ -412,234 +458,20 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
   }
 
   function loadData() {
+    // Always return an array. Older versions may have stored objects.
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && Array.isArray(parsed.data)) return parsed.data;
+      if (parsed && Array.isArray(parsed.rows)) return parsed.rows;
+      return [];
     } catch(e) {
-      return null;
+      return [];
     }
   }
 
-  
-  // =========================
-  // Google Drive autosync (Local + Drive backup)
-  // =========================
-  // NOTE: This uses Google Identity Services + Drive v3 REST.
-  // You must paste your Google OAuth "Web client" Client ID in Settings.
-  // Scope used: https://www.googleapis.com/auth/drive.file
-  const DRIVE = {
-    enabled: false,
-    autoSync: true,
-    clientId: "",
-    token: null,
-    tokenExpiresAt: 0,
-    fileId: null,
-    lastSync: null,
-    syncTimer: null,
-    isBusy: false,
-    fileName: "fatloss_log_backup.json",
-  };
-
-  function byId(id){ return document.getElementById(id); }
-function uiDriveStatus(text){
-    const b = $("btnDrive");
-    const s = $("driveStatus");
-    if(b) b.textContent = `☁ Drive: ${text}`;
-    if(s) s.textContent = `Drive: ${text}`;
-  }
-
-  function loadDrivePrefs(){
-    try{
-      const d = JSON.parse(localStorage.getItem("fatloss_drive_prefs") || "{}");
-      DRIVE.clientId = d.clientId || "";
-      DRIVE.autoSync = (d.autoSync ?? true);
-      const inp = $("driveClientId"); if(inp) inp.value = DRIVE.clientId;
-      const sel = $("driveAutoSync"); if(sel) sel.value = DRIVE.autoSync ? "on" : "off";
-    }catch(e){}
-  }
-
-  function saveDrivePrefs(){
-    const inp = $("driveClientId");
-    const sel = $("driveAutoSync");
-    DRIVE.clientId = (inp?.value || "").trim();
-    DRIVE.autoSync = (sel?.value || "on") === "on";
-    localStorage.setItem("fatloss_drive_prefs", JSON.stringify({clientId: DRIVE.clientId, autoSync: DRIVE.autoSync}));
-  }
-
-  function ensureGisLoaded(){
-    return new Promise((resolve, reject)=>{
-      if(window.google?.accounts?.oauth2){ resolve(); return; }
-      const existing = document.querySelector('script[data-gis="1"]');
-      if(existing){ existing.addEventListener("load", ()=>resolve()); existing.addEventListener("error", reject); return; }
-      const s = document.createElement("script");
-      s.src = "https://accounts.google.com/gsi/client";
-      s.async = true; s.defer = true;
-      s.dataset.gis = "1";
-      s.onload = ()=>resolve();
-      s.onerror = (e)=>reject(e);
-      document.head.appendChild(s);
-    });
-  }
-
-  async function driveConnect(){
-    saveDrivePrefs();
-    if(!DRIVE.clientId){
-      alert("Paste your Google OAuth Client ID in Settings first (ends with .apps.googleusercontent.com).");
-      return;
-    }
-    uiDriveStatus("Connecting…");
-    await ensureGisLoaded();
-
-    return new Promise((resolve)=>{
-      const tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: DRIVE.clientId,
-        scope: "https://www.googleapis.com/auth/drive.file",
-        callback: async (resp)=>{
-          if(resp?.access_token){
-            DRIVE.token = resp.access_token;
-            // token response may include expires_in (seconds)
-            DRIVE.tokenExpiresAt = Date.now() + (resp.expires_in ? (resp.expires_in*1000) : 50*60*1000);
-            DRIVE.enabled = true;
-            uiDriveStatus("On");
-            await driveEnsureFile();
-            resolve(true);
-          }else{
-            DRIVE.enabled = false;
-            uiDriveStatus("Off");
-            resolve(false);
-          }
-        }
-      });
-      tokenClient.requestAccessToken({prompt: "consent"});
-    });
-  }
-
-  function driveDisconnect(){
-    DRIVE.enabled = false;
-    DRIVE.token = null;
-    DRIVE.fileId = null;
-    DRIVE.lastSync = null;
-    uiDriveStatus("Off");
-  }
-
-  function driveAuthHeader(){
-    if(!DRIVE.token) throw new Error("Drive not connected");
-    return { "Authorization": `Bearer ${DRIVE.token}` };
-  }
-
-  async function driveFindFileIdByName(){
-    const q = encodeURIComponent(`name='${DRIVE.fileName}' and trashed=false`);
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&pageSize=1`;
-    const res = await fetch(url, { headers: { ...driveAuthHeader() }});
-    if(!res.ok) throw new Error("Drive list failed");
-    const js = await res.json();
-    return js.files?.[0]?.id || null;
-  }
-
-  async function driveEnsureFile(){
-    if(!DRIVE.enabled) return null;
-    if(DRIVE.fileId) return DRIVE.fileId;
-    DRIVE.fileId = await driveFindFileIdByName();
-    if(DRIVE.fileId) return DRIVE.fileId;
-
-    // create empty backup file
-    const empty = JSON.stringify({version: 1, exportedAt: new Date().toISOString(), rows: []});
-    const createdId = await driveUploadJson(empty, null);
-    DRIVE.fileId = createdId;
-    return createdId;
-  }
-
-  function buildMultipartBody(metadataObj, contentStr){
-    const boundary = "----fatlossDriveBoundary" + Math.random().toString(16).slice(2);
-    const delimiter = `--${boundary}`;
-    const closeDelim = `--${boundary}--`;
-    const body =
-      `${delimiter}\r\n` +
-      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-      `${JSON.stringify(metadataObj)}\r\n` +
-      `${delimiter}\r\n` +
-      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-      `${contentStr}\r\n` +
-      `${closeDelim}`;
-    return { body, boundary };
-  }
-
-  async function driveUploadJson(jsonStr, fileId){
-    const metadata = { name: DRIVE.fileName, mimeType: "application/json" };
-    const { body, boundary } = buildMultipartBody(metadata, jsonStr);
-    const isUpdate = !!fileId;
-    const url = isUpdate
-      ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
-
-    const res = await fetch(url, {
-      method: isUpdate ? "PATCH" : "POST",
-      headers: {
-        ...driveAuthHeader(),
-        "Content-Type": `multipart/related; boundary=${boundary}`
-      },
-      body
-    });
-    if(!res.ok) throw new Error("Drive upload failed");
-    const js = await res.json();
-    return js.id;
-  }
-
-  async function driveDownloadJson(fileId){
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-    const res = await fetch(url, { headers: { ...driveAuthHeader() }});
-    if(!res.ok) throw new Error("Drive download failed");
-    return await res.text();
-  }
-
-  function driveBuildBackupPayload(){
-    return JSON.stringify({
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      rows: rows
-    });
-  }
-
-  async function drivePushNow(){
-    if(!DRIVE.enabled){ alert("Drive is Off. Connect Drive first."); return; }
-    if(DRIVE.isBusy) return;
-    DRIVE.isBusy = true;
-    try{
-      uiDriveStatus("Syncing…");
-      await driveEnsureFile();
-      const payload = driveBuildBackupPayload();
-      const id = await driveUploadJson(payload, DRIVE.fileId);
-      DRIVE.fileId = id;
-      DRIVE.lastSync = new Date().toISOString();
-      uiDriveStatus("On ✓");
-      toast("Saved to Drive ✅");
-    }catch(e){
-      console.error(e);
-      uiDriveStatus("On (error)");
-      toast("Drive sync failed — check Client ID / connection");
-    }finally{
-      DRIVE.isBusy = false;
-      setTimeout(()=> uiDriveStatus(DRIVE.enabled ? "On" : "Off"), 1800);
-    }
-  }
-
-  async function drivePullLatest(){
-    if(!DRIVE.enabled){ alert("Drive is Off. Connect Drive first."); return; }
-    if(DRIVE.isBusy) return;
-    DRIVE.isBusy = true;
-    try{
-      uiDriveStatus("Downloading…");
-      await driveEnsureFile();
-      const txt = await driveDownloadJson(DRIVE.fileId);
-      const js = JSON.parse(txt || "{}");
-      if(Array.isArray(js.rows)){
-        rows = js.rows;
-        saveData(); // will write local
-        renderAll();
-        toast("Loaded from Drive ✅");
-      }else{
-        toast("Drive file had no rows.");
       }
       uiDriveStatus("On ✓");
     }catch(e){
@@ -1068,6 +900,7 @@ renderAll();
   }
 
   function openSettings() {
+    if($("sMode")) $("sMode").value = settings.mode || DEFAULT_SETTINGS.mode;
     $("sRest").value = settings.cals_rest;
     $("sGym").value = settings.cals_gym;
     $("sSport").value = settings.cals_sport;
@@ -1225,6 +1058,50 @@ renderAll();
     renderAll();
   });
 
+
+  function applyMode(mode, persist=true){
+    const preset = MODE_PRESETS[mode] || MODE_PRESETS.fatloss;
+    settings.mode = mode;
+    settings.phase = preset.phase;
+    settings.cals_rest = preset.cals_rest;
+    settings.cals_gym = preset.cals_gym;
+    settings.cals_sport = preset.cals_sport;
+    settings.cals_refeed = preset.cals_refeed;
+    settings.protein_g = preset.protein_g;
+    settings.fat_g = preset.fat_g;
+    if(persist){ saveSettings(settings); }
+    // reflect in UI
+    document.querySelectorAll(".modebtn").forEach(b=>{
+      b.classList.toggle("active", b.dataset.mode===mode);
+    });
+    const phasePill = document.getElementById("phasePill");
+    if(phasePill) phasePill.textContent = "Phase: " + settings.phase;
+    if(document.getElementById("sPhase")) document.getElementById("sPhase").value = settings.phase;
+    if(document.getElementById("sMode")) document.getElementById("sMode").value = mode;
+    renderRuleCard();
+    renderAll();
+  }
+
+  document.querySelectorAll(".modebtn").forEach(b=>{
+    b.addEventListener("click", ()=>applyMode(b.dataset.mode, true));
+  });
+
+  const btnApplyMode = document.getElementById("btnApplyMode");
+  if(btnApplyMode){
+    btnApplyMode.addEventListener("click", (e)=>{
+      e.preventDefault();
+      const mode = (document.getElementById("sMode")?.value) || "fatloss";
+      applyMode(mode, true);
+      openSettings(); // re-fill values after preset
+    });
+  }
+
+  // set initial active state
+  document.addEventListener("DOMContentLoaded", ()=>{
+    applyMode(settings.mode || DEFAULT_SETTINGS.mode, false);
+  });
+
+
   $("btnExport").addEventListener("click", exportJSON);
   $("btnImport").addEventListener("click", importJSON);
   $("btnReset").addEventListener("click", resetAll);
@@ -1272,75 +1149,105 @@ function versionedName(){
 
 /* --- CSV Export --- */
 function exportCSV(){
-  const data = JSON.parse(localStorage.getItem("fatloss_log_v1")||"[]");
+  const data = loadData();
   if(!data.length){ alert("No data"); return; }
-  const cols = Object.keys(data[0]);
+  const cols = Object.keys(data[0]||{});
   const rows = [cols.join(",")].concat(
     data.map(r=>cols.map(c=>`"${(r[c]??"").toString().replace(/"/g,'""')}"`).join(","))
   );
   const blob = new Blob([rows.join("\n")],{type:"text/csv"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="fatloss_export.csv";
+  a.download=`bodycomp_export_${getMonthKey()}.csv`;
   a.click();
 }
 
-/* --- CSV Import --- */
 function importCSV(file){
   const reader=new FileReader();
   reader.onload=()=>{
-    const lines=reader.result.split(/\r?\n/).filter(Boolean);
-    const head=lines.shift().split(",");
-    const data=lines.map(l=>{
-      const vals=l.split(",").map(v=>v.replace(/^"|"$/g,""));
-      const o={}; head.forEach((h,i)=>o[h]=vals[i]); return o;
-    });
-    localStorage.setItem("fatloss_log_v1", JSON.stringify(data));
-    location.reload();
+    try{
+      const lines=reader.result.split(/\r?\n/).filter(Boolean);
+      const head=lines.shift().split(",").map(h=>h.trim());
+      const data=lines.map(line=>{
+        const vals=line.split(",").map(v=>v.replace(/^"|"$/g,"").replace(/""/g,'"'));
+        const o={}; head.forEach((h,i)=>o[h]=vals[i]??""); return o;
+      });
+      saveData(data);
+      location.reload();
+    }catch(e){
+      alert("CSV import failed");
+    }
   };
   reader.readAsText(file);
 }
 
 /* --- Dashboard KPIs --- */
-function computeKPIs(){
-  let d = JSON.parse(localStorage.getItem("fatloss_log_v1") || "[]");
-
-  // 🔒 SAFETY: normalize data
-  if (!Array.isArray(d)) {
-    d = Object.values(d || {});
+  const _charts = { macro:null, adh:null };
+  function setKPI(id, val){
+    const el=document.getElementById(id);
+    if(el) el.textContent = val;
+  }
+  function drawPies(macros, adh){
+    // Macros pie
+    const ctx1=document.getElementById("macroPie");
+    if(ctx1 && window.Chart){
+      const data = macros ? [macros.protein||0, macros.carbs||0, macros.fat||0] : [0,0,0];
+      if(_charts.macro) _charts.macro.destroy();
+      _charts.macro = new Chart(ctx1, {
+        type:"pie",
+        data:{ labels:["Protein","Carbs","Fat"], datasets:[{ data }] },
+        options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
+      });
+    }
+    // Adherence pie
+    const ctx2=document.getElementById("adhPie");
+    if(ctx2 && window.Chart){
+      const ok = adh ? adh.ok : 0;
+      const miss = adh ? (adh.miss-ok) : 0;
+      if(_charts.adh) _charts.adh.destroy();
+      _charts.adh = new Chart(ctx2, {
+        type:"doughnut",
+        data:{ labels:["On target (±100)","Off target"], datasets:[{ data:[ok, miss] }] },
+        options:{ responsive:true, plugins:{ legend:{ position:"bottom" } }, cutout:"60%" }
+      });
+    }
   }
 
-  if (!d.length) return;
 
-  const last7 = d.slice(-7);
+function computeKPIs(){
+    const d = loadData();
+    const last7 = d.slice(-7);
+    if(!last7.length){
+      setKPI('kDef', 0);
+      setKPI('kWt', '—');
+      setKPI('kAdh', '0%');
+      drawPies(null, null);
+      return;
+    }
+    const num = (v)=>{ const n=parseFloat(v); return Number.isFinite(n)?n:0; };
+    const avgDef = Math.round(last7.reduce((s,r)=>s+(num(r["Total Burn"])-num(r["Calories Eaten"])),0)/last7.length);
+    const wtTrend = (()=>{
+      const w = last7.map(r=>num(r["Weight (kg)"])).filter(x=>x>0);
+      if(w.length<2) return "—";
+      return (w[w.length-1]-w[0]).toFixed(1)+" kg";
+    })();
+    const adh = Math.round(100*last7.filter(r=>Math.abs(num(r["Calories Eaten"])-num(r["Calories Target"]))<=100).length/last7.length);
 
-  const avgDef = Math.round(
-    last7.reduce((s, r) => s + ((r["Total Burn"] || 0) - (r["Calories Eaten"] || 0)), 0)
-    / last7.length
-  );
+    setKPI('kDef', avgDef);
+    setKPI('kWt', wtTrend);
+    setKPI('kAdh', adh+"%");
 
-  const wtTrend =
-    last7[0]["Weight (kg)"] && last7[last7.length - 1]["Weight (kg)"]
-      ? (last7[last7.length - 1]["Weight (kg)"] - last7[0]["Weight (kg)"]).toFixed(1)
-      : "—";
-
-  const adh = Math.round(
-    100 * last7.filter(r =>
-      Math.abs((r["Calories Eaten"] || 0) - (r["Calories Target"] || 0)) <= 100
-    ).length / last7.length
-  );
-
-  const set = (id, val) => {
-    const e = document.getElementById(id);
-    if (e) e.textContent = val;
-  };
-
-  set("kDef", avgDef);
-  set("kWt", wtTrend);
-  set("kAdh", adh + "%");
-}
-
-}
+    // today macros pie (last row)
+    const t = d[d.length-1] || {};
+    const macros = {
+      protein: num(t["Protein (g)"]),
+      carbs: num(t["Carbs (g)"]),
+      fat: num(t["Fat (g)"])
+    };
+    // adherence pie (7d)
+    const adhPie = { ok: last7.filter(r=>Math.abs(num(r["Calories Eaten"])-num(r["Calories Target"]))<=100).length, miss: last7.length };
+    drawPies(macros, adhPie);
+  }
 document.addEventListener("DOMContentLoaded", computeKPIs);
 </script>
 
