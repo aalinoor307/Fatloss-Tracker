@@ -441,9 +441,8 @@ const GOOGLE_API_KEY = "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs";
     fileName: "fatloss_log_backup.json",
   };
 
-  function $(id){ return document.getElementById(id); }
-
-  function uiDriveStatus(text){
+  function byId(id){ return document.getElementById(id); }
+function uiDriveStatus(text){
     const b = $("btnDrive");
     const s = $("driveStatus");
     if(b) b.textContent = `☁ Drive: ${text}`;
