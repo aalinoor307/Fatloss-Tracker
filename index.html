@@ -1,1928 +1,1072 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Body Composition Control Dashboard</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Body Composition Control — Phase 1</title>
+<meta name="theme-color" content="#0b0f17"/>
 <style>
 :root{
-  --bg:#070b12;
-  --text:#eaf0ff;
-  --muted:#9fb0cc;
-  --line:#1f2a40;
-  --accent:#4aa3ff;
-  --good:#2ad37d;
-  --warn:#ffc66e;
-  --bad:#ff5b5b;
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --bg:#0b0f17; --panel:#0f1624; --panel2:#121c2e; --text:#e8edf6; --muted:#9aa7bd;
+  --line:#1f2a40; --good:#2ad37d; --warn:#ffcc66; --bad:#ff5b5b; --accent:#4aa3ff;
+  --shadow:0 16px 45px rgba(0,0,0,.45);
+  --r:16px;
 }
 *{box-sizing:border-box}
+html,body{height:100%}
 body{
   margin:0;
-  font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
-  background: radial-gradient(1200px 700px at 20% 0%, #0e1730, var(--bg));
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:radial-gradient(1200px 800px at 18% 6%, rgba(74,163,255,.18), transparent 55%),
+             radial-gradient(900px 700px at 82% 20%, rgba(42,211,125,.10), transparent 55%),
+             linear-gradient(180deg, #070b12, var(--bg));
   color:var(--text);
 }
-.wrap{max-width:1200px;margin:0 auto;padding:16px}
-.top{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  position:sticky;top:0;background:linear-gradient(180deg, rgba(7,11,18,.92), rgba(7,11,18,.70));
-  backdrop-filter: blur(10px);
-  padding:12px 0; z-index:5;
+a{color:inherit}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 16px 44px}
+.topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg, rgba(74,163,255,.9), rgba(42,211,125,.8)); box-shadow:0 12px 30px rgba(0,0,0,.35)}
+h1{font-size:18px;margin:0}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill, button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+  color:var(--text);
+  border-radius:999px;
+  padding:9px 12px;
+  font-size:12px;
+  cursor:pointer;
+  user-select:none;
 }
-.brand{display:flex;align-items:center;gap:10px}
-.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4aa3ff,#2ad37d);box-shadow:var(--shadow)}
-.brand h1{font-size:16px;margin:0}
-.brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
-.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.btn{
-  appearance:none;border:1px solid var(--line);background:rgba(16,26,45,.8);
-  color:var(--text);padding:8px 10px;border-radius:12px;cursor:pointer;
-  font-size:12px; line-height:1; display:inline-flex; align-items:center; gap:8px;
-}
-.btn:hover{border-color:#2d3d5f}
-.btn.primary{background:linear-gradient(135deg,#4aa3ff,#2ad37d);border-color:transparent}
-.btn.danger{background:linear-gradient(135deg,#ff5b5b,#ff9191);border-color:transparent}
-.btn.ghost{background:transparent}
-.pill{
-  padding:7px 10px;border-radius:999px;border:1px solid var(--line);
-  background:rgba(0,0,0,.25); font-size:12px; color:var(--muted);
-}
-.modes{display:flex;gap:6px;align-items:center}
-.mode{
-  padding:8px 10px;border-radius:999px;border:1px solid var(--line);
-  background:rgba(0,0,0,.25); font-size:12px; cursor:pointer; user-select:none;
-  opacity:.7;
-}
-.mode.active{opacity:1;border-color:var(--accent); box-shadow: 0 0 0 2px rgba(74,163,255,.15) inset}
-.grid{display:grid;grid-template-columns: 1.4fr .9fr; gap:14px; margin-top:12px}
-@media(max-width:980px){.grid{grid-template-columns:1fr}}
+.pill.active{border-color:rgba(74,163,255,.55); box-shadow:0 0 0 3px rgba(74,163,255,.12) inset}
+button.primary{background:linear-gradient(135deg, rgba(74,163,255,.95), rgba(74,163,255,.55)); border-color:transparent}
+button.danger{background:linear-gradient(135deg, rgba(255,91,91,.95), rgba(255,91,91,.55)); border-color:transparent}
+button.ghost{background:rgba(255,255,255,.02)}
+.row{display:grid;grid-template-columns:1.4fr .9fr;gap:14px;margin-top:14px}
+@media (max-width: 980px){.row{grid-template-columns:1fr}}
 .card{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
   border:1px solid var(--line);
-  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
-  border-radius:18px; padding:14px; box-shadow:var(--shadow);
-}
-.card h2{margin:0 0 10px 0;font-size:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{border:1px solid var(--line);background:rgba(0,0,0,.22);border-radius:14px;padding:10px}
-.kpi .l{font-size:11px;color:var(--muted)}
-.kpi .v{font-size:16px;font-weight:700;margin-top:4px}
-.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:980px){.split{grid-template-columns:1fr}}
-.calendar{
-  display:grid;grid-template-columns:repeat(7,1fr);gap:8px;
-}
-.dow{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.day{
-  min-height:92px;border:1px solid var(--line);border-radius:14px;padding:8px;
-  background:rgba(0,0,0,.22); cursor:pointer; position:relative; overflow:hidden;
-}
-.day:hover{border-color:#2d3d5f}
-.day .num{font-size:11px;color:var(--muted)}
-.badge{display:inline-block;margin-top:8px;font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(16,26,45,.6)}
-.badge.good{border-color:rgba(42,211,125,.5);color:#bff7da}
-.badge.warn{border-color:rgba(255,198,110,.5);color:#ffe2b3}
-.badge.bad{border-color:rgba(255,91,91,.5);color:#ffd0d0}
-.day .mini{font-size:10px;color:var(--muted);margin-top:6px}
-.day .dot{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%}
-.dot.g{background:var(--good)} .dot.y{background:var(--warn)} .dot.r{background:var(--bad)}
-hr{border:0;border-top:1px solid var(--line);margin:12px 0}
-.small{font-size:12px;color:var(--muted)}
-canvas{width:100%;height:220px;display:block;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.22)}
-.footer{margin-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.backdrop{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  display:none;align-items:center;justify-content:center;z-index:20;
-}
-.modal{
-  width:min(980px,calc(100vw - 24px));
-  max-height:calc(100vh - 24px);
-  overflow:auto;
-  border:1px solid var(--line);
-  border-radius:18px;
-  background:linear-gradient(180deg, rgba(16,26,45,.98), rgba(7,11,18,.98));
+  border-radius:var(--r);
   box-shadow:var(--shadow);
-  padding:14px;
+  overflow:hidden;
 }
-.modalTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.modalTop h3{margin:0;font-size:14px}
-.form{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px
+.card .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.card .hd .t{font-weight:700;font-size:13px}
+.card .bd{padding:14px}
+.gridKpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width: 980px){.gridKpi{grid-template-columns:repeat(2,1fr)}}
+.kpi{padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.22)}
+.kpi .k{font-size:11px;color:var(--muted)}
+.kpi .v{font-size:18px;font-weight:800;margin-top:4px}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+.twoCharts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+@media (max-width: 980px){.twoCharts{grid-template-columns:1fr}}
+.chartBox{padding:10px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.22)}
+.chartBox .ct{font-size:11px;color:var(--muted);margin:0 0 8px 0}
+canvas{width:100%;height:170px;display:block}
+.bigCanvas{height:210px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+.dow div{font-size:11px;color:var(--muted);text-align:center}
+.day{
+  min-height:88px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:rgba(0,0,0,.20);
+  padding:10px;
+  cursor:pointer;
+  position:relative;
 }
-@media(max-width:980px){.form{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.form{grid-template-columns:1fr}}
+.day:hover{border-color:rgba(74,163,255,.55)}
+.day .n{font-weight:800;font-size:12px}
+.badgeRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.badge{font-size:10px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:rgba(255,255,255,.02)}
+.badge.good{color:rgba(42,211,125,.95);border-color:rgba(42,211,125,.25)}
+.badge.warn{color:rgba(255,204,102,.95);border-color:rgba(255,204,102,.25)}
+.badge.bad{color:rgba(255,91,91,.95);border-color:rgba(255,91,91,.25)}
+.dot{
+  position:absolute; top:10px; right:10px;
+  width:10px;height:10px;border-radius:50%;
+  background:rgba(255,255,255,.12);
+}
+.dot.on{background:rgba(74,163,255,.75); box-shadow:0 0 0 4px rgba(74,163,255,.12)}
+.table{width:100%;border-collapse:collapse;margin-top:10px}
+.table th,.table td{padding:10px;border-bottom:1px solid var(--line);font-size:12px;text-align:left}
+.table th{color:var(--muted);font-weight:600}
+.table td .mini{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.rightTools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.small{font-size:11px;color:var(--muted)}
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.55);z-index:50}
+.modal.on{display:flex}
+.sheet{max-width:920px;width:100%;border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg, rgba(15,22,36,.98), rgba(15,22,36,.92));box-shadow:var(--shadow);overflow:hidden}
+.sheet .shd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.sheet .shd .t{font-weight:800;font-size:13px}
+.sheet .sbd{padding:14px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width: 880px){.form{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:11px;color:var(--muted)}
-.field input,.field select,.field textarea{
-  background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--text);
-  border-radius:12px;padding:10px;font-size:12px;outline:none;
+label{font-size:11px;color:var(--muted)}
+input,select,textarea{
+  background:rgba(0,0,0,.25);
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:10px 10px;
+  border-radius:12px;
+  outline:none;
 }
-.field textarea{min-height:90px;resize:vertical}
-.hint{font-size:11px;color:var(--muted)}
-.lock{font-size:11px;color:var(--muted);border:1px dashed var(--line);padding:8px;border-radius:12px;background:rgba(0,0,0,.18)}
+textarea{min-height:84px;resize:vertical}
+.hr{height:1px;background:var(--line);margin:12px 0}
+.ruleCard{
+  border:1px dashed rgba(74,163,255,.35);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(74,163,255,.05);
+  font-size:12px;
+  line-height:1.35;
+}
+.ruleCard b{color:var(--text)}
+.warnBox{
+  border:1px solid rgba(255,204,102,.25);
+  background:rgba(255,204,102,.06);
+  border-radius:14px;
+  padding:10px;
+  color:var(--muted);
+  font-size:12px;
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
+  <div class="topbar">
     <div class="brand">
-      <div class="logo"></div>
+      <div class="logo" aria-hidden="true"></div>
       <div>
         <h1>Body Composition Control</h1>
-        <div class="sub">Fat loss · Weight loss · Weight gain — single dashboard</div>
+        <div class="sub">Fat loss • Weight loss • Weight gain — single-file tracker (local storage) • Phase 1 (profile → math → targets)</div>
       </div>
     </div>
-    <div class="controls">
-      <div class="modes" id="modes"></div>
-      <span class="pill" id="monthLabel">—</span>
-      <button class="btn" id="prevBtn">◀</button>
-      <button class="btn" id="nextBtn">▶</button>
-      <button class="btn" id="todayBtn">Today</button>
-      <button class="btn" id="profileBtn">Profile</button>
-      <button class="btn" id="exportJsonBtn">Export JSON</button>
-      <button class="btn" id="exportCsvBtn">Export CSV</button>
-      <button class="btn" id="importBtn">Import</button>
-      <button class="btn" id="snapshotBtn">Monthly Snapshot</button>
-      <button class="btn danger" id="resetBtn">Reset</button>
+    <div class="pills" id="modePills">
+      <div class="pill active" data-mode="fatloss">Fat loss</div>
+      <div class="pill" data-mode="weightloss">Weight loss</div>
+      <div class="pill" data-mode="weightgain">Weight gain</div>
     </div>
   </div>
 
-  <div class="grid">
+  <div class="pills" style="margin-top:10px">
+    <button class="ghost" id="btnPrev">◀</button>
+    <button class="ghost" id="btnNext">▶</button>
+    <div class="pill" id="monthLabel" style="cursor:default"></div>
+    <button class="ghost" id="btnToday">Today</button>
+    <button class="ghost" id="btnProfile">Profile</button>
+    <span class="small" style="padding:0 6px">•</span>
+    <button class="ghost" id="btnExportJSON">Export JSON</button>
+    <button class="ghost" id="btnExportCSV">Export CSV</button>
+    <label class="pill" style="display:flex;gap:8px;align-items:center;cursor:pointer">
+      Import <input type="file" id="fileImport" accept=".json,.csv" style="display:none"/>
+    </label>
+    <button class="ghost" id="btnSnapshot">Monthly Snapshot</button>
+    <button class="danger" id="btnReset">Reset</button>
+  </div>
+
+  <div class="row">
     <div class="card">
-      <h2>This Month</h2>
-      <div class="calendar" id="dow"></div>
-      <div style="height:8px"></div>
-      <div class="calendar" id="cal"></div>
-      <div class="footer">
-        <div>Click any day to edit. Data saves automatically (local).</div>
-        <div><span class="small">Pro features (Drive sync, payments) are placeholders.</span></div>
+      <div class="hd">
+        <div class="t">This Month</div>
+        <div class="rightTools">
+          <span class="small" id="computedTargetLine">Target: —</span>
+        </div>
+      </div>
+      <div class="bd">
+        <div class="dow">
+          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        </div>
+        <div class="calendar" id="cal"></div>
+        <div class="small" style="margin-top:10px">Click any day to edit. Data saves automatically (local). Targets auto-calc from Profile + Mode. You can override per day.</div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Dashboard</h2>
-      <div class="kpis">
-        <div class="kpi"><div class="l">Avg deficit / surplus (7d)</div><div class="v" id="kDef">—</div><div class="s" id="kDefS">—</div></div>
-        <div class="kpi"><div class="l">Weight trend (7d)</div><div class="v" id="kWt">—</div><div class="s" id="kWtS">—</div></div>
-        <div class="kpi"><div class="l">Adherence (7d)</div><div class="v" id="kAdh">—</div><div class="s" id="kAdhS">—</div></div>
-      </div>
-      <hr/>
-      <div class="split">
-        <div>
-          <div class="small">Weight trend (last 14 entries)</div>
-          <canvas id="cWeight" width="800" height="240"></canvas>
-        </div>
-        <div>
-          <div class="small">Deficit / surplus (last 14 entries)</div>
-          <canvas id="cDef" width="800" height="240"></canvas>
+      <div class="hd">
+        <div class="t">Dashboard</div>
+        <div class="rightTools">
+          <span class="pill" id="phaseLabel" style="cursor:default">Phase: Cut</span>
         </div>
       </div>
-      <div style="height:12px"></div>
-      <div class="split">
-        <div>
-          <div class="small">Macros (today / last entry)</div>
-          <canvas id="cPie" width="800" height="240"></canvas>
+      <div class="bd">
+        <div class="gridKpi">
+          <div class="kpi">
+            <div class="k">Avg deficit / surplus (7d)</div>
+            <div class="v" id="kDef">—</div>
+            <div class="s" id="kDefS">Per day</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Weight trend (7d)</div>
+            <div class="v" id="kWt">—</div>
+            <div class="s">7-day change</div>
+          </div>
+          <div class="kpi">
+            <div class="k">Adherence (7d)</div>
+            <div class="v" id="kAdh">—</div>
+            <div class="s">Within ±100 kcal target</div>
+          </div>
         </div>
-        <div class="lock">
-          <strong>NO‑THINK RULE CARD</strong><br/><br/>
-          1) Pick Mode: Fat loss / Weight loss / Weight gain<br/>
-          2) Log: Calories eaten + Total burn (TDEE) + Weight (morning)<br/>
-          3) The only math that matters: <strong>TDEE − Intake</strong><br/>
-          4) Adjust only if: 14 days flat + adherence ≥ 80%<br/>
-          5) Refeed trigger: 2+ low recoveries in a row OR performance tanks<br/>
+
+        <div class="twoCharts">
+          <div class="chartBox">
+            <p class="ct">Weight trend (last 14 entries)</p>
+            <canvas id="cWeight" class="bigCanvas" width="700" height="240"></canvas>
+          </div>
+          <div class="chartBox">
+            <p class="ct">Deficit / surplus (last 14 entries)</p>
+            <canvas id="cDef" class="bigCanvas" width="700" height="240"></canvas>
+          </div>
         </div>
+
+        <div class="twoCharts">
+          <div class="chartBox">
+            <p class="ct">Macros (last entry)</p>
+            <canvas id="cPie" width="700" height="220"></canvas>
+          </div>
+          <div class="chartBox">
+            <p class="ct">No-think rule card</p>
+            <div class="ruleCard" id="ruleCard"></div>
+          </div>
+        </div>
+
+        <div class="warnBox" style="margin-top:10px">
+          Math is only as good as your inputs. Use this correctly: <b>Deficit = Total Burn (TDEE) − Calories Eaten</b>. Gym calories alone are not TDEE.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="hd">
+      <div class="t">Recent entries</div>
+      <div class="small">Shows last 10 saved days</div>
+    </div>
+    <div class="bd" style="padding-top:0">
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>Date</th><th>Mode</th><th>Target</th><th>Eaten</th><th>Total Burn</th><th>Deficit</th><th>Weight</th><th>Body fat</th><th>Protein</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Day Editor -->
+<div class="modal" id="mDay" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="shd">
+      <div class="t" id="dayTitle">Edit day</div>
+      <div class="pills">
+        <button class="primary" id="btnSaveDay">Save</button>
+        <button class="ghost" id="btnCloseDay">✕</button>
+      </div>
+    </div>
+    <div class="sbd">
+      <div class="form">
+        <div class="field">
+          <label>Mode</label>
+          <select id="dMode">
+            <option value="fatloss">Fat loss</option>
+            <option value="weightloss">Weight loss</option>
+            <option value="weightgain">Weight gain</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Training</label>
+          <select id="dTrain">
+            <option value="rest">Rest</option>
+            <option value="gym">Gym</option>
+            <option value="sport">Football / Padel</option>
+            <option value="walk">Walk / Swim</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Calorie target (kcal) — auto-filled, can override</label>
+          <input id="dTarget" inputmode="numeric" placeholder="e.g. 2500"/>
+        </div>
+        <div class="field">
+          <label>Calories eaten (kcal)</label>
+          <input id="dEaten" inputmode="numeric" placeholder="e.g. 2300"/>
+        </div>
+
+        <div class="field">
+          <label>Total burn / TDEE (kcal)</label>
+          <input id="dBurn" inputmode="numeric" placeholder="e.g. 3200"/>
+        </div>
+        <div class="field">
+          <label>Deficit / surplus (auto)</label>
+          <input id="dDef" disabled/>
+        </div>
+
+        <div class="field">
+          <label>Weight (kg)</label>
+          <input id="dWt" inputmode="decimal" placeholder="e.g. 84.2"/>
+        </div>
+        <div class="field">
+          <label>Body fat % (optional)</label>
+          <input id="dBf" inputmode="decimal" placeholder="e.g. 16.5"/>
+        </div>
+
+        <div class="field">
+          <label>Protein (g)</label>
+          <input id="dP" inputmode="numeric" placeholder="e.g. 200"/>
+        </div>
+        <div class="field">
+          <label>Carbs (g)</label>
+          <input id="dC" inputmode="numeric" placeholder="e.g. 220"/>
+        </div>
+        <div class="field">
+          <label>Fat (g)</label>
+          <input id="dF" inputmode="numeric" placeholder="e.g. 70"/>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Notes</label>
+          <textarea id="dNotes" placeholder="Anything relevant (sleep, cravings, performance, travel...)"></textarea>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="small">
+        Auto guidance: if you enter <b>Profile</b>, targets will be computed precisely. If you leave Profile blank, targets are generic.
       </div>
     </div>
   </div>
 </div>
 
-<div class="backdrop" id="backdrop">
-  <div class="modal">
-    <div class="modalTop">
-      <h3 id="modalTitle">Day</h3>
-      <div class="row">
-        <button class="btn" id="saveBtn">Save</button>
-        <button class="btn ghost" id="closeBtn">Close</button>
+<!-- Profile -->
+<div class="modal" id="mProfile" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="shd">
+      <div class="t">Profile → math → targets</div>
+      <div class="pills">
+        <button class="primary" id="btnSaveProfile">Save</button>
+        <button class="ghost" id="btnCloseProfile">✕</button>
       </div>
     </div>
-    <div class="hint" id="modalHint">Targets auto-calc by mode + training type. Enter Total Burn if WHOOP calories are hidden.</div>
-    <div class="form">
-      <div class="field">
-        <label>Mode</label>
-        <select id="fMode">
-          <option value="fat_loss">Fat loss</option>
-          <option value="weight_loss">Weight loss</option>
-          <option value="weight_gain">Weight gain</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Training</label>
-        <select id="fTrain">
-          <option>Rest</option><option>Gym</option><option>Padel</option><option>Football</option>
-          <option>Walk</option><option>Swim</option><option>Gym + Padel</option><option>Gym + Football</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Recovery</label>
-        <select id="fRec">
-          <option value="">—</option>
-          <option value="g">Green</option>
-          <option value="y">Yellow</option>
-          <option value="r">Red</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Calories eaten</label>
-        <input id="fEat" type="number" placeholder="e.g. 2450" />
-      </div>
-      <div class="field">
-        <label>Total burn (TDEE)</label>
-        <input id="fBurn" type="number" placeholder="e.g. 3100" />
-      </div>
-      <div class="field">
-        <label>Target calories (auto)</label>
-        <input id="fTarget" type="number" disabled />
-      </div>
-
-      <div class="field">
-        <label>Protein (g)</label>
-        <input id="fP" type="number" placeholder="e.g. 200" />
-      </div>
-      <div class="field">
-        <label>Carbs (g)</label>
-        <input id="fC" type="number" placeholder="e.g. 220" />
-      </div>
-      <div class="field">
-        <label>Fat (g)</label>
-        <input id="fF" type="number" placeholder="e.g. 70" />
-      </div>
-
-      <div class="field">
-        <label>Weight (kg)</label>
-        <input id="fW" type="number" step="0.1" placeholder="e.g. 99.8" />
-      </div>
-      <div class="field">
-        <label>Waist (cm)</label>
-        <input id="fWaist" type="number" step="0.1" placeholder="optional" />
-      </div>
-      <div class="field">
-        <label>Notes</label>
-        <textarea id="fNotes" placeholder="sleep, hunger, performance..."></textarea>
-      </div>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="filePick" style="display:none" accept=".json,.csv,text/csv,application/json" />
-
-
-<!-- Profile Modal -->
-<div class="backdrop" id="profileBackdrop" style="display:none">
-  <div class="modal" style="max-width:820px">
-    <div class="mh">
-      <div>
-        <div class="mt">Profile (auto math)</div>
-        <div class="ms">Set once. Targets, deficit/surplus, and charts update automatically.</div>
-      </div>
-      <div class="mact">
-        <button class="btn primary" id="profileSaveBtn">Save</button>
-        <button class="btn" id="profileCloseBtn">×</button>
-      </div>
-    </div>
-    <div class="mb">
-      <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px">
-        <div class="kpi">
-          <div class="k">Sex</div>
-          <select id="pSex" class="inp">
+    <div class="sbd">
+      <div class="form">
+        <div class="field">
+          <label>Sex</label>
+          <select id="pSex">
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
         </div>
-        <div class="kpi">
-          <div class="k">Activity level (TDEE multiplier)</div>
-          <select id="pAct" class="inp">
-            <option value="1.2">Sedentary (1.2)</option>
-            <option value="1.375">Light (1.375)</option>
-            <option value="1.55" selected>Moderate (1.55)</option>
-            <option value="1.725">Very active (1.725)</option>
-            <option value="1.9">Athlete (1.9)</option>
+        <div class="field">
+          <label>Age</label>
+          <input id="pAge" inputmode="numeric" placeholder="e.g. 28"/>
+        </div>
+        <div class="field">
+          <label>Height (cm)</label>
+          <input id="pH" inputmode="numeric" placeholder="e.g. 178"/>
+        </div>
+        <div class="field">
+          <label>Current weight (kg)</label>
+          <input id="pW" inputmode="decimal" placeholder="e.g. 84.0"/>
+        </div>
+        <div class="field">
+          <label>Current body fat %</label>
+          <input id="pBf" inputmode="decimal" placeholder="e.g. 16.0"/>
+        </div>
+        <div class="field">
+          <label>Activity level (non-workout)</label>
+          <select id="pAct">
+            <option value="1.2">Sedentary (desk)</option>
+            <option value="1.375">Light (walks)</option>
+            <option value="1.55" selected>Moderate (active)</option>
+            <option value="1.725">Very active</option>
+            <option value="1.9">Athlete</option>
           </select>
         </div>
-        <div class="kpi">
-          <div class="k">Age</div>
-          <input id="pAge" class="inp" type="number" min="10" max="99" step="1" placeholder="e.g., 24">
+
+        <div class="field">
+          <label>Goal weight (kg)</label>
+          <input id="pGW" inputmode="decimal" placeholder="optional"/>
         </div>
-        <div class="kpi">
-          <div class="k">Height (cm)</div>
-          <input id="pHeight" class="inp" type="number" min="120" max="230" step="1" placeholder="e.g., 178">
+        <div class="field">
+          <label>Goal body fat %</label>
+          <input id="pGBf" inputmode="decimal" placeholder="optional"/>
         </div>
-        <div class="kpi">
-          <div class="k">Weight (kg)</div>
-          <input id="pWeight" class="inp" type="number" min="35" max="250" step="0.1" placeholder="e.g., 85.0">
-        </div>
-        <div class="kpi">
-          <div class="k">Current body fat % (optional)</div>
-          <input id="pBF" class="inp" type="number" min="3" max="60" step="0.1" placeholder="e.g., 18.5">
+
+        <div class="field" style="grid-column:1/-1">
+          <label>Preview (auto)</label>
+          <div class="ruleCard" id="profilePreview"></div>
         </div>
       </div>
 
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Goals (used to auto-calc targets)</div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
-        <div class="kpi">
-          <div class="k">Fat loss goal BF% (optional)</div>
-          <input id="gBF" class="inp" type="number" min="5" max="35" step="0.1" placeholder="e.g., 12.0">
-          <div class="s">Used for display only.</div>
-        </div>
-        <div class="kpi">
-          <div class="k">Weight loss rate (kg/week)</div>
-          <input id="gWL" class="inp" type="number" min="0" max="2" step="0.05" placeholder="e.g., 0.6">
-          <div class="s">Auto deficit = rate×7700/7.</div>
-        </div>
-        <div class="kpi">
-          <div class="k">Weight gain rate (kg/week)</div>
-          <input id="gWG" class="inp" type="number" min="0" max="1" step="0.05" placeholder="e.g., 0.25">
-          <div class="s">Auto surplus = rate×7700/7.</div>
-        </div>
-      </div>
-
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Preview (computed)</div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
-        <div class="kpi"><div class="k">BMR</div><div class="v" id="pvBmr">—</div></div>
-        <div class="kpi"><div class="k">TDEE</div><div class="v" id="pvTdee">—</div></div>
-        <div class="kpi"><div class="k">Loss target</div><div class="v" id="pvLoss">—</div><div class="s">kcal/day</div></div>
-        <div class="kpi"><div class="k">Gain target</div><div class="v" id="pvGain">—</div><div class="s">kcal/day</div></div>
-      </div>
-
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Notes</div>
-      </div>
-      <div class="muted" style="font-size:12px;line-height:1.5">
-        • If you enter <b>Total Burn</b> from WHOOP for a day, the deficit uses it. If blank, it uses your computed TDEE for that day.<br>
-        • Wearables are estimates. Weekly scale trend overrides day-to-day noise.
+      <div class="hr"></div>
+      <div class="small">
+        Targets use Mifflin-St Jeor BMR → TDEE (BMR × activity). Mode adds deficit/surplus. Training only changes recommended buffer slightly; your <b>Total Burn</b> input is what determines actual deficit.
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const TARGETS = {
-  fat_loss: { label:"Fat loss", base:2500, rest:2300, hard:2700, protein:200, fat:70 },
-  weight_loss: { label:"Weight loss", base:2350, rest:2150, hard:2550, protein:200, fat:65 },
-  weight_gain: { label:"Weight gain", base:2900, rest:2750, hard:3100, protein:190, fat:85 }
-};
-const STORAGE_KEY = "bc_days_v1";
-const SETTINGS_KEY = "bc_settings_v1";
+/* ===== Storage ===== */
+const LS_PROFILE = "bc_profile_v1";
+const LS_ENTRIES = "bc_entries_v1";
+const LS_UI      = "bc_ui_v1";
 
-const PROFILE_KEY = "bc_profile_v1";
+/* ===== Utilities ===== */
+const pad2 = n => String(n).padStart(2,"0");
+const fmtDate = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const toNum = (x)=>{ const n = parseFloat(String(x||"").replace(/,/g,"")); return Number.isFinite(n)?n:null; };
 
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    const v = JSON.parse(raw);
+    return v ?? fallback;
+  }catch(_){ return fallback; }
+}
+function saveJSON(key, v){ localStorage.setItem(key, JSON.stringify(v)); }
+
+/* ===== Profile + Math ===== */
 function defaultProfile(){
   return {
-    sex:"male",
-    activity:1.55,
-    age:null,
-    height_cm:null,
-    weight_kg:null,
-    bodyfat:null,
-    goal_bf:null,
-    goal_loss_kgwk:0.6,
-    goal_gain_kgwk:0.25
+    sex:"male", age:null, heightCm:null, weightKg:null, bodyFatPct:null,
+    activity:1.55, goalWeightKg:null, goalBodyFatPct:null
   };
 }
-function loadProfile(){
-  const raw = localStorage.getItem(PROFILE_KEY);
-  const p = raw ? Object.assign(defaultProfile(), JSON.parse(raw)) : defaultProfile();
-  // coerce
-  p.activity = Number(p.activity)||1.55;
-  return p;
-}
-function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+function getProfile(){ return {...defaultProfile(), ...loadJSON(LS_PROFILE, {})}; }
 
-function calcBMR(p){
-  const w = safeNum(p.weight_kg), h = safeNum(p.height_cm), a = safeNum(p.age);
-  const bf = safeNum(p.bodyfat);
-  if(w && bf && bf>3 && bf<60){
-    const lean = w*(1-bf/100);
-    return 370 + 21.6*lean; // Katch-McArdle
+function bmrMifflin(p){
+  const w = toNum(p.weightKg), h = toNum(p.heightCm), a = toNum(p.age);
+  if(w==null||h==null||a==null) return null;
+  const base = 10*w + 6.25*h - 5*a;
+  return Math.round(base + (p.sex==="female" ? -161 : 5));
+}
+function tdee(p){
+  const b = bmrMifflin(p);
+  if(b==null) return null;
+  const act = toNum(p.activity) ?? 1.55;
+  return Math.round(b * act);
+}
+
+// Mode plan: return {phaseLabel, targetKcal, proteinG, deficitOrSurplusKcal, weeklyKg}
+function planFor(mode, p){
+  const T = tdee(p);
+  // Fallback if profile incomplete
+  const fallback = {
+    fatloss:{phase:"Cut", target:2400, prot:200, delta:-600, weekly:-0.55},
+    weightloss:{phase:"Cut", target:2300, prot:190, delta:-700, weekly:-0.65},
+    weightgain:{phase:"Bulk", target:2900, prot:170, delta:+300, weekly:+0.27},
+  }[mode] || {phase:"Cut", target:2400, prot:200, delta:-600, weekly:-0.55};
+
+  if(T==null){
+    return {phase:fallback.phase, targetKcal:fallback.target, proteinG:fallback.prot, deltaKcal:fallback.delta, weeklyKg:fallback.weekly, tdee:null, bmr:null};
   }
-  if(!w || !h || !a) return null;
-  const s = (p.sex==="female") ? -161 : 5;
-  return 10*w + 6.25*h - 5*a + s; // Mifflin-St Jeor
-}
-function calcTDEE(p){
-  const bmr = calcBMR(p);
-  if(!bmr) return null;
-  const act = Number(p.activity)||1.55;
-  return bmr*act;
-}
-function kcalPerDayFromRate(kgPerWeek){
-  const r = safeNum(kgPerWeek);
-  if(!r || r<=0) return null;
-  return (r*7700)/7;
-}
-function computedTargets(mode, p){
-  const tdee = calcTDEE(p);
-  const lossK = kcalPerDayFromRate(p.goal_loss_kgwk) || 600;
-  const gainK = kcalPerDayFromRate(p.goal_gain_kgwk) || 250;
-  // mode mapping: fat_loss uses lossK, weight_loss uses 0.75*lossK, weight_gain uses gainK
-  let target = null;
-  if(tdee){
-    if(mode==="weight_gain") target = tdee + gainK;
-    else if(mode==="weight_loss") target = tdee - (lossK*0.75);
-    else target = tdee - lossK;
+
+  const b = bmrMifflin(p);
+  let delta;
+  if(mode==="weightgain"){
+    delta = clamp(Math.round(0.12*T), 200, 500);
+  }else if(mode==="weightloss"){
+    delta = clamp(Math.round(0.25*T), 500, 1000);
+    delta = -delta;
+  }else{
+    delta = clamp(Math.round(0.22*T), 400, 800);
+    delta = -delta;
   }
-  // macro targets (simple, sane defaults)
-  const w = safeNum(p.weight_kg);
-  const prot = w ? (mode==="weight_gain" ? Math.round(1.8*w) : Math.round(2.2*w)) : (TARGETS[mode]?.protein||200);
-  const fatg = w ? Math.round(0.8*w) : (TARGETS[mode]?.fat||70);
-  return {tdee, target: target? Math.round(target): null, protein: prot, fat: fatg};
+  const target = Math.round(T + delta);
+  // Protein: 2.0g/kg for cut, 1.6g/kg for gain (fallback to 180)
+  const w = toNum(p.weightKg);
+  let prot = 180;
+  if(w!=null){
+    prot = Math.round((mode==="weightgain" ? 1.6 : 2.0) * w);
+    prot = clamp(prot, 120, 260);
+  }
+  const weeklyKg = (delta*7)/7700; // negative for loss, positive for gain
+  return {
+    phase: (mode==="weightgain" ? "Bulk" : "Cut"),
+    targetKcal: target,
+    proteinG: prot,
+    deltaKcal: delta,
+    weeklyKg: Math.round(weeklyKg*100)/100,
+    tdee:T, bmr:b
+  };
 }
 
-const $id = (id)=>document.getElementById(id);
-const iso = (d)=> new Date(d).toISOString().slice(0,10);
-function safeNum(v){const n=Number(v); return Number.isFinite(n)?n:null;}
-
-let view = (()=>{ const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
-
-function loadSettings(){
-  const raw = localStorage.getItem(SETTINGS_KEY);
-  const s = raw? JSON.parse(raw): {mode:"fat_loss"};
-  if(!TARGETS[s.mode]) s.mode="fat_loss";
-  return s;
+function makeRuleCard(mode, p){
+  const pl = planFor(mode,p);
+  const sign = pl.deltaKcal>=0 ? "+" : "";
+  const goal = (pl.weeklyKg>=0 ? "+" : "") + pl.weeklyKg + " kg/week (estimate)";
+  return `
+<b>Mode:</b> ${mode==="fatloss"?"Fat loss":mode==="weightloss"?"Weight loss":"Weight gain"}<br/>
+<b>Daily target:</b> ${pl.targetKcal} kcal (${sign}${pl.deltaKcal} vs TDEE)<br/>
+<b>Protein target:</b> ${pl.proteinG} g/day<br/>
+<b>Weekly rate:</b> ${goal}<br/><br/>
+<b>Daily execution:</b><br/>
+1) Enter morning weight (and body fat if you have it)<br/>
+2) Log calories eaten + total burn (TDEE)<br/>
+3) Deficit = burn − eaten (ignore “workout calories”)<br/>
+4) Adjust only if 14-day trend stalls
+  `.trim();
 }
 
-function normalizeArr(x){
-  if(Array.isArray(x)) return x;
-  if(!x) return [];
-  if(typeof x === "object") return Object.values(x);
-  return [];
+/* ===== Entries Model =====
+Entry shape:
+{ date:"YYYY-MM-DD", mode, training, target, eaten, burn, weight, bodyfat, protein, carbs, fat, notes, updatedAt }
+*/
+function getEntries(){
+  const v = loadJSON(LS_ENTRIES, []);
+  return Array.isArray(v) ? v : [];
+}
+function setEntries(arr){ saveJSON(LS_ENTRIES, arr); }
+
+function upsertEntry(e){
+  const arr = getEntries();
+  const i = arr.findIndex(x => x.date === e.date);
+  if(i>=0) arr[i] = e; else arr.push(e);
+  arr.sort((a,b)=>a.date.localeCompare(b.date));
+  setEntries(arr);
+}
+function getEntry(date){
+  return getEntries().find(e=>e.date===date) || null;
 }
 
-function effectiveBurn(entry, tdee){
-  const b = safeNum(entry.totalBurn);
-  if(b) return b;
-  return tdee ? Math.round(tdee) : null;
+/* ===== UI State ===== */
+function defaultUI(){
+  const now = new Date();
+  return { mode:"fatloss", y: now.getFullYear(), m: now.getMonth() }; // m:0-11
+}
+function getUI(){ return {...defaultUI(), ...loadJSON(LS_UI,{})}; }
+function setUI(u){ saveJSON(LS_UI,u); }
+
+/* ===== Rendering ===== */
+const el = (id)=>document.getElementById(id);
+const cal = el("cal");
+const tblBody = el("tbl").querySelector("tbody");
+
+function monthName(y,m){
+  const d = new Date(y,m,1);
+  return d.toLocaleString(undefined,{month:"long", year:"numeric"});
+}
+function mondayFirstIndex(d){ // 0..6 where 0=Mon
+  const js = d.getDay(); // 0 Sun
+  return (js+6)%7;
 }
 
-function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
-
-function loadDays(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  let d = raw ? JSON.parse(raw) : [];
-  if(!Array.isArray(d)) d = Object.values(d||{});
-  const map = new Map();
-  d.forEach(x=>{ if(x && x.date) map.set(x.date, x); });
-  return Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date));
-}
-function saveDays(days){ localStorage.setItem(STORAGE_KEY, JSON.stringify(days)); }
-
-function deriveTarget(mode, training){
-  const t = TARGETS[mode] || TARGETS.fat_loss;
-  const p = loadProfile();
-  const comp = computedTargets(mode, p);
-  // Use computed base target when possible, otherwise fallback to hard-coded defaults.
-  const base = (comp && comp.target) ? comp.target : t.base;
-
-  // Keep your original day-type structure as offsets around the base.
-  const restDelta = (t.rest - t.base);
-  const hardDelta = (t.hard - t.base);
-
-  const tr = (training||"Rest").toLowerCase();
-  let target = base;
-  if(tr.includes("rest")) target = base + restDelta;
-  // "hard" days: football or gym+padel or gym+football etc.
-  if(tr.includes("football") || tr.includes("gym +") || (tr.includes("padel") && tr.includes("gym"))) target = base + hardDelta;
-
-  const protein = (comp && comp.protein) ? comp.protein : t.protein;
-  const fat = (comp && comp.fat) ? comp.fat : t.fat;
-  const carbs = Math.max(0, Math.round((target - protein*4 - fat*9)/4));
-  return {target, protein, fat, carbs};
+function calcDayDefaultTarget(mode, training, p){
+  const base = planFor(mode,p).targetKcal;
+  // small training buffer (not “earned calories”, just practical)
+  const adj = {rest:0, gym:100, sport:200, walk:80}[training] ?? 0;
+  return base + adj;
 }
 
-function entryTargets(e){
-  const s = loadSettings();
-  const mode = e.mode || s.mode || "fat_loss";
-  const training = e.training || "Rest";
-  const der = deriveTarget(mode, training);
-  const t = (e.targetLocked ? (safeNum(e.targetCalories) ?? der.target) : der.target);
-  return {mode, training, target:t, protein:der.protein, fat:der.fat, carbs:der.carbs};
-}
+function render(){
+  const ui = getUI();
+  const p = getProfile();
+  const plan = planFor(ui.mode,p);
 
+  // mode pills
+  document.querySelectorAll("#modePills .pill").forEach(x=>{
+    x.classList.toggle("active", x.dataset.mode===ui.mode);
+  });
+  el("phaseLabel").textContent = "Phase: " + plan.phase;
+  el("monthLabel").textContent = monthName(ui.y, ui.m);
+  el("computedTargetLine").textContent = `Target (base): ${plan.targetKcal} kcal • Protein: ${plan.proteinG}g`;
 
-function ensureMonthSeed(){
-  const days = loadDays();
-  const last = new Date(view.y, view.m+1, 0).getDate();
-  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const have = new Set(days.filter(x=>x.date?.startsWith(monthKey)).map(x=>x.date));
-  const s = loadSettings();
-  let changed=false;
-  for(let d=1; d<=last; d++){
-    const dt = iso(new Date(view.y, view.m, d));
-    if(!have.has(dt)){
-      const der = deriveTarget(s.mode,"Rest");
-      days.push({
-        date:dt, mode:s.mode, training:"Rest", recovery:"",
-        caloriesEaten:null, totalBurn:null,
-        targetCalories:der.target,
-        protein_g:der.protein, carbs_g:null, fat_g:der.fat,
-        weight_kg:null, waist_cm:null, notes:""
-      });
-      changed=true;
+  // rule card
+  el("ruleCard").innerHTML = makeRuleCard(ui.mode,p);
+
+  // calendar
+  cal.innerHTML = "";
+  const first = new Date(ui.y, ui.m, 1);
+  const daysInMonth = new Date(ui.y, ui.m+1, 0).getDate();
+  const offset = mondayFirstIndex(first);
+  const totalSlots = Math.ceil((offset + daysInMonth)/7)*7;
+
+  const todayKey = fmtDate(new Date());
+  for(let slot=0; slot<totalSlots; slot++){
+    const dayNum = slot - offset + 1;
+    const cell = document.createElement("div");
+
+    if(dayNum<1 || dayNum>daysInMonth){
+      cell.style.visibility="hidden";
+      cell.className="day";
+      cal.appendChild(cell);
+      continue;
     }
+
+    const date = fmtDate(new Date(ui.y, ui.m, dayNum));
+    const entry = getEntry(date);
+
+    const mode = entry?.mode || ui.mode;
+    const training = entry?.training || "rest";
+    const target = (entry && entry.target!=null) ? entry.target : calcDayDefaultTarget(mode, training, p);
+    const eaten = entry?.eaten ?? null;
+    const burn = entry?.burn ?? null;
+    const hasData = !!entry && (eaten!=null || burn!=null || entry.weight!=null);
+
+    cell.className="day";
+    cell.dataset.date = date;
+    cell.innerHTML = `
+      <div class="dot ${hasData?'on':''}"></div>
+      <div class="n">${dayNum}</div>
+      <div class="badgeRow">
+        <span class="badge">${mode==="fatloss"?"Fat":mode==="weightloss"?"Loss":"Gain"}</span>
+        <span class="badge">${training==="rest"?"Rest":training==="gym"?"Gym":training==="sport"?"Sport":"Walk"}</span>
+        <span class="badge">${"Tgt "+target}</span>
+      </div>
+    `;
+
+    if(eaten!=null && burn!=null){
+      const def = Math.round(burn - eaten);
+      const b = document.createElement("div");
+      b.className = "badgeRow";
+      const cls = def>=0 ? (def>=500 ? "good" : "warn") : "bad";
+      b.innerHTML = `<span class="badge ${cls}">${def>=0?def+" def":"+"+Math.abs(def)+" surplus"}</span>`;
+      cell.appendChild(b);
+    }
+
+    cal.appendChild(cell);
   }
-  if(changed) saveDays(days);
+
+  // recent table
+  const entries = getEntries().slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  tblBody.innerHTML = entries.map(e=>{
+    const def = (e.burn!=null && e.eaten!=null) ? Math.round(e.burn - e.eaten) : "";
+    return `
+      <tr>
+        <td><b>${e.date}</b><span class="mini">${new Date(e.date).toLocaleDateString(undefined,{weekday:"short"})}</span></td>
+        <td>${e.mode==="fatloss"?"Fat loss":e.mode==="weightloss"?"Weight loss":"Weight gain"}</td>
+        <td>${e.target ?? ""}</td>
+        <td>${e.eaten ?? ""}</td>
+        <td>${e.burn ?? ""}</td>
+        <td>${def}</td>
+        <td>${e.weight ?? ""}</td>
+        <td>${e.bodyfat ?? ""}</td>
+        <td>${e.protein ?? ""}</td>
+        <td>${(e.notes||"").slice(0,42)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  computeKpisAndCharts();
 }
 
-function renderModes(){
-  const s=loadSettings();
-  const modesEl=$id("modes");
-  modesEl.innerHTML="";
-  Object.keys(TARGETS).forEach(k=>{
-    const b=document.createElement("div");
-    b.className="mode"+(s.mode===k?" active":"");
-    b.textContent=TARGETS[k].label;
-    b.onclick=()=>{
-      s.mode=k; saveSettings(s);
-      const days=loadDays();
-      const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-      days.forEach(e=>{
-        if(e.date?.startsWith(monthKey)){
-          if(!e.mode) e.mode=k;
-          const der = deriveTarget(e.mode||k, e.training||"Rest");
-          e.targetCalories = der.target;
-          if(e.protein_g==null) e.protein_g = der.protein;
-          if(e.fat_g==null) e.fat_g = der.fat;
-          if(e.carbs_g==null) e.carbs_g = der.carbs;
-        }
-      });
-      saveDays(days);
-      
-// Profile modal wiring
-function openProfile(){
-  const p = loadProfile();
-  $id("pSex").value = p.sex || "male";
-  $id("pAct").value = String(p.activity||1.55);
-  $id("pAge").value = p.age ?? "";
-  $id("pHeight").value = p.height_cm ?? "";
-  $id("pWeight").value = p.weight_kg ?? "";
-  $id("pBF").value = p.bodyfat ?? "";
-  $id("gBF").value = p.goal_bf ?? "";
-  $id("gWL").value = p.goal_loss_kgwk ?? 0.6;
-  $id("gWG").value = p.goal_gain_kgwk ?? 0.25;
-  $id("profileBackdrop").style.display="flex";
-  updateProfilePreview();
+function computeKpisAndCharts(){
+  const entries = getEntries().filter(e=>e.eaten!=null || e.burn!=null || e.weight!=null).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const last14 = entries.slice(-14);
+  const last7 = entries.slice(-7);
+
+  // avg deficit/surplus 7d
+  const defs = last7.map(e => (e.burn!=null && e.eaten!=null) ? (e.burn - e.eaten) : null).filter(v=>v!=null);
+  if(defs.length){
+    const avg = Math.round(defs.reduce((a,b)=>a+b,0)/defs.length);
+    el("kDef").textContent = (avg>=0?avg:("+"+Math.abs(avg))) + " kcal";
+    el("kDefS").textContent = avg>=0 ? "Avg daily deficit" : "Avg daily surplus";
+  }else{
+    el("kDef").textContent = "—"; el("kDefS").textContent = "Per day";
+  }
+
+  // weight trend 7d
+  const wts = last7.map(e=>toNum(e.weight)).filter(v=>v!=null);
+  if(wts.length>=2){
+    const ch = Math.round((wts[wts.length-1]-wts[0])*10)/10;
+    el("kWt").textContent = (ch>=0?"+":"") + ch + " kg";
+  }else el("kWt").textContent = "—";
+
+  // adherence 7d
+  const ad = last7.filter(e=>e.target!=null && e.eaten!=null && Math.abs(e.eaten-e.target)<=100).length;
+  el("kAdh").textContent = last7.length ? Math.round(100*ad/last7.length) + "%" : "—";
+
+  // charts
+  drawLine(el("cWeight"), last14.map(e=>toNum(e.weight)).filter(v=>v!=null), "weight");
+  drawLine(el("cDef"), last14.map(e=> (e.burn!=null && e.eaten!=null) ? (e.burn-e.eaten) : null).filter(v=>v!=null), "def");
+  // pie
+  const last = entries[entries.length-1];
+  if(last){
+    drawPie(el("cPie"), [
+      {label:"Carbs", v: toNum(last.carbs)||0},
+      {label:"Protein", v: toNum(last.protein)||0},
+      {label:"Fat", v: toNum(last.fat)||0},
+    ]);
+  }else{
+    drawPie(el("cPie"), [{label:"Carbs",v:0},{label:"Protein",v:0},{label:"Fat",v:0}]);
+  }
 }
-function closeProfile(){ $id("profileBackdrop").style.display="none"; }
+
+function drawAxes(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="rgba(255,255,255,.05)";
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle="rgba(255,255,255,.08)";
+  ctx.lineWidth=1;
+  for(let i=1;i<5;i++){
+    const y = (h*i)/5;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  }
+}
+
+function drawLine(canvas, data, kind){
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  drawAxes(ctx,w,h);
+  if(!data || data.length<2){
+    ctx.fillStyle="rgba(154,167,189,.9)";
+    ctx.font="12px system-ui";
+    ctx.fillText("No data yet", 14, 24);
+    return;
+  }
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = (max-min) || 1;
+  const pad = 16;
+  ctx.strokeStyle = "rgba(74,163,255,.95)";
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x = pad + (i/(data.length-1))*(w-2*pad);
+    const y = h-pad - ((v-min)/span)*(h-2*pad);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // baseline for deficit chart
+  if(kind==="def"){
+    const y0 = h-pad - ((0-min)/span)*(h-2*pad);
+    ctx.strokeStyle="rgba(255,255,255,.14)";
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad,y0); ctx.lineTo(w-pad,y0); ctx.stroke();
+  }
+}
+
+function drawPie(canvas, parts){
+  const ctx = canvas.getContext("2d");
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="rgba(255,255,255,.05)";
+  ctx.fillRect(0,0,w,h);
+  const total = parts.reduce((a,p)=>a+p.v,0) || 1;
+  const cx=w*0.28, cy=h*0.52, r=Math.min(w,h)*0.34;
+
+  const cols = ["rgba(74,163,255,.9)","rgba(42,211,125,.9)","rgba(255,204,102,.9)"];
+  let a0 = -Math.PI/2;
+  parts.forEach((p,i)=>{
+    const a1 = a0 + (p.v/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,a0,a1);
+    ctx.closePath();
+    ctx.fillStyle=cols[i%cols.length];
+    ctx.fill();
+    a0=a1;
+  });
+
+  // legend
+  ctx.fillStyle="rgba(232,237,246,.95)";
+  ctx.font="12px system-ui";
+  parts.forEach((p,i)=>{
+    const y = 28 + i*18;
+    ctx.fillStyle=cols[i%cols.length];
+    ctx.fillRect(w*0.62, y-10, 10, 10);
+    ctx.fillStyle="rgba(232,237,246,.95)";
+    ctx.fillText(`${p.label}: ${Math.round(p.v)}g`, w*0.62 + 16, y-1);
+  });
+}
+
+/* ===== Day Modal ===== */
+let activeDate = null;
+function openDay(date){
+  activeDate = date;
+  const ui = getUI();
+  const p = getProfile();
+  const e = getEntry(date);
+  const d = new Date(date);
+
+  el("dayTitle").textContent = `Edit: ${date} (${d.toLocaleDateString(undefined,{weekday:"long"})})`;
+
+  el("dMode").value = e?.mode || ui.mode;
+  el("dTrain").value = e?.training || "rest";
+
+  const defTarget = calcDayDefaultTarget(el("dMode").value, el("dTrain").value, p);
+  el("dTarget").value = (e?.target ?? defTarget);
+  el("dEaten").value  = (e?.eaten ?? "");
+  el("dBurn").value   = (e?.burn ?? "");
+  el("dWt").value     = (e?.weight ?? "");
+  el("dBf").value     = (e?.bodyfat ?? "");
+  el("dP").value      = (e?.protein ?? "");
+  el("dC").value      = (e?.carbs ?? "");
+  el("dF").value      = (e?.fat ?? "");
+  el("dNotes").value  = (e?.notes ?? "");
+
+  computeDayDef();
+  el("mDay").classList.add("on");
+}
+function closeDay(){ el("mDay").classList.remove("on"); activeDate=null; }
+
+function computeDayDef(){
+  const burn = toNum(el("dBurn").value);
+  const eaten = toNum(el("dEaten").value);
+  if(burn!=null && eaten!=null){
+    const v = Math.round(burn - eaten);
+    el("dDef").value = v>=0 ? `${v} deficit` : `${Math.abs(v)} surplus`;
+  }else{
+    el("dDef").value = "";
+  }
+}
+
+["dBurn","dEaten"].forEach(id=>el(id).addEventListener("input", computeDayDef));
+["dMode","dTrain"].forEach(id=>el(id).addEventListener("change", ()=>{
+  const p = getProfile();
+  const defTarget = calcDayDefaultTarget(el("dMode").value, el("dTrain").value, p);
+  if(!el("dTarget").value) el("dTarget").value = defTarget;
+}));
+
+el("btnSaveDay").addEventListener("click", ()=>{
+  if(!activeDate) return;
+  const e0 = getEntry(activeDate) || {date:activeDate};
+
+  const e = {
+    ...e0,
+    date: activeDate,
+    mode: el("dMode").value,
+    training: el("dTrain").value,
+    target: toNum(el("dTarget").value),
+    eaten: toNum(el("dEaten").value),
+    burn: toNum(el("dBurn").value),
+    weight: toNum(el("dWt").value),
+    bodyfat: toNum(el("dBf").value),
+    protein: toNum(el("dP").value),
+    carbs: toNum(el("dC").value),
+    fat: toNum(el("dF").value),
+    notes: (el("dNotes").value||"").trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // If user never entered profile weight, keep it updated from last entry
+  const prof = getProfile();
+  if(prof.weightKg==null && e.weight!=null){
+    prof.weightKg = e.weight;
+    saveJSON(LS_PROFILE, prof);
+  }
+
+  upsertEntry(e);
+  closeDay();
+  render();
+});
+el("btnCloseDay").addEventListener("click", closeDay);
+el("mDay").addEventListener("click", (ev)=>{ if(ev.target.id==="mDay") closeDay(); });
+
+/* ===== Profile Modal ===== */
+function openProfile(){
+  const p = getProfile();
+  el("pSex").value = p.sex || "male";
+  el("pAge").value = p.age ?? "";
+  el("pH").value   = p.heightCm ?? "";
+  el("pW").value   = p.weightKg ?? "";
+  el("pBf").value  = p.bodyFatPct ?? "";
+  el("pAct").value = String(p.activity ?? 1.55);
+  el("pGW").value  = p.goalWeightKg ?? "";
+  el("pGBf").value = p.goalBodyFatPct ?? "";
+  updateProfilePreview();
+  el("mProfile").classList.add("on");
+}
+function closeProfile(){ el("mProfile").classList.remove("on"); }
+
 function readProfileFromUI(){
   return {
-    sex: $id("pSex").value,
-    activity: Number($id("pAct").value)||1.55,
-    age: safeNum($id("pAge").value),
-    height_cm: safeNum($id("pHeight").value),
-    weight_kg: safeNum($id("pWeight").value),
-    bodyfat: safeNum($id("pBF").value),
-    goal_bf: safeNum($id("gBF").value),
-    goal_loss_kgwk: safeNum($id("gWL").value) || 0.6,
-    goal_gain_kgwk: safeNum($id("gWG").value) || 0.25
+    sex: el("pSex").value,
+    age: toNum(el("pAge").value),
+    heightCm: toNum(el("pH").value),
+    weightKg: toNum(el("pW").value),
+    bodyFatPct: toNum(el("pBf").value),
+    activity: toNum(el("pAct").value) ?? 1.55,
+    goalWeightKg: toNum(el("pGW").value),
+    goalBodyFatPct: toNum(el("pGBf").value),
   };
 }
 function updateProfilePreview(){
   const p = readProfileFromUI();
-  const bmr = calcBMR(p);
-  const tdee = calcTDEE(p);
-  const loss = computedTargets("fat_loss", p).target;
-  const gain = computedTargets("weight_gain", p).target;
-  $id("pvBmr").textContent = bmr ? Math.round(bmr)+" kcal" : "—";
-  $id("pvTdee").textContent = tdee ? Math.round(tdee)+" kcal" : "—";
-  $id("pvLoss").textContent = loss ? loss : "—";
-  $id("pvGain").textContent = gain ? gain : "—";
+  const b = bmrMifflin(p);
+  const T = tdee(p);
+  const pl = planFor(getUI().mode, p);
+  const goalW = p.goalWeightKg!=null ? `Goal weight: ${p.goalWeightKg} kg<br/>` : "";
+  const goalBf = p.goalBodyFatPct!=null ? `Goal body fat: ${p.goalBodyFatPct}%<br/>` : "";
+  el("profilePreview").innerHTML = `
+    <b>BMR:</b> ${b ?? "—"} kcal<br/>
+    <b>TDEE:</b> ${T ?? "—"} kcal<br/>
+    <b>Mode target:</b> ${pl.targetKcal} kcal (${pl.deltaKcal>=0?"+":""}${pl.deltaKcal} vs TDEE)<br/>
+    <b>Protein:</b> ${pl.proteinG} g/day<br/>
+    <b>Weekly rate:</b> ${(pl.weeklyKg>=0?"+":"")}${pl.weeklyKg} kg/week (estimate)<br/>
+    ${goalW}${goalBf}
+  `.trim();
 }
-function saveProfileFromUI(){
+["pSex","pAge","pH","pW","pBf","pAct","pGW","pGBf"].forEach(id=>el(id).addEventListener("input", updateProfilePreview));
+["pAct","pSex"].forEach(id=>el(id).addEventListener("change", updateProfilePreview));
+
+el("btnSaveProfile").addEventListener("click", ()=>{
   const p = readProfileFromUI();
-  // minimal validation: if any are set, require the core set for Mifflin; BF route only needs weight.
-  const hasAny = Object.values(p).some(v=>v!==null && v!=="" && v!==undefined);
-  if(hasAny){
-    const bmr = calcBMR(p);
-    if(!bmr){
-      alert("Profile incomplete. Enter at least Weight + Bodyfat% OR Weight + Height + Age.");
-      return;
-    }
-  }
-  saveProfile(p);
+  saveJSON(LS_PROFILE, p);
   closeProfile();
-  renderAll();
+  render();
+});
+el("btnCloseProfile").addEventListener("click", closeProfile);
+el("mProfile").addEventListener("click", (ev)=>{ if(ev.target.id==="mProfile") closeProfile(); });
+
+/* ===== Export / Import ===== */
+function download(name, content, type){
+  const blob = new Blob([content], {type:type||"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
 }
 
-["pSex","pAct","pAge","pHeight","pWeight","pBF","gBF","gWL","gWG"].forEach(id=>{
-  const el = $id(id); if(el) el.addEventListener("input", updateProfilePreview);
+el("btnExportJSON").addEventListener("click", ()=>{
+  const payload = { profile:getProfile(), entries:getEntries(), exportedAt:new Date().toISOString() };
+  download(`bodycomp_export_${new Date().toISOString().slice(0,10)}.json`, JSON.stringify(payload,null,2), "application/json");
+});
+el("btnExportCSV").addEventListener("click", ()=>{
+  const rows = [];
+  const cols = ["date","mode","training","target","eaten","burn","deficit","weight","bodyfat","protein","carbs","fat","notes","updatedAt"];
+  rows.push(cols.join(","));
+  getEntries().forEach(e=>{
+    const def = (e.burn!=null && e.eaten!=null) ? (e.burn-e.eaten) : "";
+    const vals = cols.map(k=>{
+      let v = (k==="deficit") ? def : (e[k] ?? "");
+      v = String(v).replace(/"/g,'""');
+      return `"${v}"`;
+    });
+    rows.push(vals.join(","));
+  });
+  download(`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`, rows.join("\n"), "text/csv");
 });
 
-$id("profileBtn").onclick=openProfile;
-$id("profileCloseBtn").onclick=closeProfile;
-$id("profileSaveBtn").onclick=saveProfileFromUI;
-$id("profileBackdrop").addEventListener("click",(e)=>{ if(e.target.id==="profileBackdrop") closeProfile(); });
-
-ensureMonthSeed();
-      renderAll();
-    };
-    modesEl.appendChild(b);
-  });
-}
-
-function renderCalendar(){
-  $id("monthLabel").textContent = new Date(view.y, view.m, 1).toLocaleString(undefined, {month:"long", year:"numeric"});
-  const dow = $id("dow"); dow.innerHTML="";
-  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(x=>{
-    const d=document.createElement("div"); d.className="dow"; d.textContent=x; dow.appendChild(d);
-  });
-  const cal = $id("cal"); cal.innerHTML="";
-  const first = new Date(view.y, view.m, 1);
-  let start = first.getDay(); start = (start===0)?6:(start-1);
-  for(let i=0;i<start;i++){ const b=document.createElement("div"); b.className="day"; b.style.visibility="hidden"; cal.appendChild(b); }
-  const days = loadDays();
-  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const map = new Map(days.filter(d=>d.date?.startsWith(monthKey)).map(d=>[d.date,d]));
-  const last = new Date(view.y, view.m+1, 0).getDate();
-  for(let d=1; d<=last; d++){
-    const ds = iso(new Date(view.y, view.m, d));
-    const e = map.get(ds) || {date:ds, mode:loadSettings().mode, training:"Rest"};
-    const der = deriveTarget(e.mode||loadSettings().mode, e.training||"Rest");
-    const target = e.targetCalories ?? der.target;
-
-    const el=document.createElement("div");
-    el.className="day";
-    el.onclick=()=>openDay(ds);
-    el.innerHTML = `<div class="num">${d}</div>`;
-    if(e.recovery==="g"||e.recovery==="y"||e.recovery==="r"){
-      const dot=document.createElement("div"); dot.className="dot "+e.recovery; el.appendChild(dot);
-    }
-    let badgeClass="";
-    if(e.caloriesEaten!=null && target!=null){
-      const diff = Math.abs(Number(e.caloriesEaten)-Number(target));
-      badgeClass = diff<=100 ? "good" : (diff<=250 ? "warn" : "bad");
-    }
-    const b=document.createElement("div"); b.className="badge "+badgeClass; b.textContent=`Target ${target}`; el.appendChild(b);
-    const mini=document.createElement("div"); mini.className="mini";
-    mini.textContent=`${(e.training||"Rest")} · ${(e.weight_kg!=null?e.weight_kg+"kg":"—")} · ${(e.caloriesEaten!=null?e.caloriesEaten+"kcal":"—")}`;
-    el.appendChild(mini);
-    cal.appendChild(el);
-  }
-}
-
-/* Modal */
-let activeDate=null;
-function openDay(dateStr){
-  activeDate=dateStr;
-  const days=loadDays();
-  const e=days.find(x=>x.date===dateStr) || null;
-  const s=loadSettings();
-  const mode=e?.mode || s.mode;
-  $id("modalTitle").textContent=`Edit: ${dateStr}`;
-  $id("fMode").value=mode;
-  $id("fTrain").value=e?.training || "Rest";
-  $id("fRec").value=e?.recovery || "";
-  $id("fEat").value=e?.caloriesEaten ?? "";
-  $id("fBurn").value=e?.totalBurn ?? "";
-  const der=deriveTarget(mode, e?.training||"Rest");
-  $id("fTarget").value=e?.targetCalories ?? der.target;
-  $id("fP").value=e?.protein_g ?? der.protein;
-  $id("fF").value=e?.fat_g ?? der.fat;
-  $id("fC").value=e?.carbs_g ?? der.carbs;
-  $id("fW").value=e?.weight_kg ?? "";
-  $id("fWaist").value=e?.waist_cm ?? "";
-  $id("fNotes").value=e?.notes ?? "";
-  $id("backdrop").style.display="flex";
-}
-function closeDay(){ $id("backdrop").style.display="none"; activeDate=null; }
-function upTargetPreview(){
-  const mode=$id("fMode").value;
-  const tr=$id("fTrain").value;
-  const der=deriveTarget(mode,tr);
-  $id("fTarget").value=der.target;
-}
-function saveDay(){
-  if(!activeDate) return;
-  const days=loadDays();
-  let e=days.find(x=>x.date===activeDate);
-  if(!e){ e={date:activeDate}; days.push(e); }
-  e.mode=$id("fMode").value;
-  e.training=$id("fTrain").value;
-  e.recovery=$id("fRec").value || "";
-  const der=deriveTarget(e.mode,e.training);
-  const autoT = entryTargets(e).target;
-  const manualT = safeNum($id("fTarget").value);
-  e.targetLocked = (manualT!=null && manualT!==autoT);
-  e.targetCalories = (manualT!=null ? manualT : autoT);
-  e.caloriesEaten = safeNum($id("fEat").value);
-  e.totalBurn = safeNum($id("fBurn").value);
-  e.protein_g = safeNum($id("fP").value) ?? der.protein;
-  e.carbs_g = safeNum($id("fC").value) ?? der.carbs;
-  e.fat_g = safeNum($id("fF").value) ?? der.fat;
-  e.weight_kg = safeNum($id("fW").value);
-  e.waist_cm = safeNum($id("fWaist").value);
-  e.notes = ($id("fNotes").value||"").slice(0,2000);
-  saveDays(days);
-  closeDay();
-  renderAll();
-}
-
-/* KPIs + Charts */
-function ctx2d(c){ return c.getContext("2d"); }
-function clearCanvas(c){
-  const g=ctx2d(c);
-  g.clearRect(0,0,c.width,c.height);
-  g.fillStyle="rgba(0,0,0,.12)"; g.fillRect(0,0,c.width,c.height);
-  return g;
-}
-function drawEmpty(c, text){
-  const g=clearCanvas(c);
-  g.fillStyle="rgba(159,176,204,.85)";
-  g.font="14px system-ui";
-  g.fillText(text, 16, 28);
-}
-function drawAxes(g,w,h){
-  g.strokeStyle="rgba(31,42,64,.9)";
-  g.beginPath(); g.moveTo(50,16); g.lineTo(50,h-34); g.lineTo(w-16,h-34); g.stroke();
-}
-function getRecent(n=14){
-  const d=loadDays().filter(e=>e.weight_kg!=null || e.caloriesEaten!=null || e.totalBurn!=null);
-  return d.slice(-n);
-}
-function setKpi(id,v,s){ $id(id).textContent=v; $id(id+"S").textContent=s||""; }
-
-function computeKPIs(){
-  const entries=getRecent(30);
-  const tdee = calcTDEE(loadProfile());
-  if(!entries.length){
-    setKpi("kDef","—","Log at least 1 day");
-    setKpi("kWt","—","");
-    setKpi("kAdh","—","");
-    drawEmpty($id("cWeight"),"No data");
-    drawEmpty($id("cDef"),"No data");
-    drawEmpty($id("cPie"),"No data");
-    return;
-  }
-  const last7=entries.slice(-7);
-  const defs=last7.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null).filter(v=>v!=null);
-  const avgDef = defs.length ? Math.round(defs.reduce((a,b)=>a+b,0)/defs.length) : null;
-
-  const ws=last7.map(e=>e.weight_kg).filter(v=>v!=null);
-  const wtTrend = ws.length>=2 ? (ws[ws.length-1]-ws[0]) : null;
-
-  const den = last7.filter(e=>entryTargets(e).target!=null).length || 0;
-  let adh=null;
-  if(den){
-    const hits=last7.filter(e=>{
-      if(e.targetCalories==null || e.caloriesEaten==null) return false;
-      const tP = (TARGETS[e.mode||"fat_loss"]?.protein ?? 200) - 10;
-      return Math.abs(e.caloriesEaten-e.targetCalories)<=100 && (e.protein_g==null || e.protein_g>=tP);
-    }).length;
-    adh=Math.round(100*hits/den);
-  }
-
-  const last2=last7.slice(-2);
-  const lowRec = last2.length===2 && last2.every(e=>e.recovery==="r"||e.recovery==="y");
-  const suggestRefeed = lowRec && avgDef!=null && avgDef>500;
-
-  setKpi("kDef", avgDef==null?"—":`${avgDef} kcal`, suggestRefeed?"Refeed suggested (low recovery)":"Avg daily deficit/surplus");
-  setKpi("kWt", wtTrend==null?"—":`${wtTrend.toFixed(1)} kg`, "7‑day change");
-  setKpi("kAdh", adh==null?"—":`${adh}%`, "Within ±100 kcal target");
-
-  drawWeight($id("cWeight"), entries.slice(-14));
-  drawDef($id("cDef"), entries.slice(-14));
-  drawPie($id("cPie"), entries[entries.length-1]);
-}
-
-function drawWeight(c, entries){
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  drawAxes(g,w,h);
-  const pts=entries.map((e,i)=>({i,v:e.weight_kg})).filter(p=>p.v!=null);
-  if(pts.length<2){ drawEmpty(c,"Need 2+ weight entries"); return; }
-  const vals=pts.map(p=>p.v);
-  const min=Math.min(...vals), max=Math.max(...vals);
-  const pad=(max-min)*0.15 || 1;
-  const lo=min-pad, hi=max+pad;
-  const x0=50,x1=w-16,y0=16,y1=h-34;
-  g.strokeStyle="rgba(74,163,255,.9)"; g.lineWidth=2;
-  g.beginPath();
-  pts.forEach((p,idx)=>{
-    const x=x0+(x1-x0)*(p.i/(entries.length-1));
-    const y=y1-(y1-y0)*((p.v-lo)/(hi-lo));
-    if(idx===0) g.moveTo(x,y); else g.lineTo(x,y);
-  });
-  g.stroke();
-}
-
-function drawDef(c, entries){
-  const tdee=calcTDEE(loadProfile());
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  drawAxes(g,w,h);
-  const vals=entries.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null);
-  const valid=vals.filter(v=>v!=null);
-  if(!valid.length){ drawEmpty(c,"Enter TDEE + Intake"); return; }
-  const max=Math.max(...valid,0), min=Math.min(...valid,0);
-  const pad=(max-min)*0.15 || 100;
-  const lo=min-pad, hi=max+pad;
-  const x0=50,x1=w-16,y0=16,y1=h-34;
-  const yZero=y1-(y1-y0)*((0-lo)/(hi-lo));
-  g.strokeStyle="rgba(31,42,64,.9)"; g.beginPath(); g.moveTo(x0,yZero); g.lineTo(x1,yZero); g.stroke();
-  const bw=(x1-x0)/(entries.length)*0.65;
-  entries.forEach((e,i)=>{
-    const v=(effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null)?(effectiveBurn(e,tdee)-e.caloriesEaten):null;
-    if(v==null) return;
-    const x=x0+(x1-x0)*(i/(entries.length-1));
-    const y=y1-(y1-y0)*((v-lo)/(hi-lo));
-    const top=Math.min(y,yZero), hh=Math.abs(yZero-y);
-    g.fillStyle=v>=0?"rgba(42,211,125,.8)":"rgba(255,91,91,.8)";
-    g.fillRect(x-bw/2, top, bw, hh);
-  });
-}
-
-function drawPie(c, e){
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  if(!e || (e.protein_g==null && e.carbs_g==null && e.fat_g==null)){ drawEmpty(c,"Log macros to see pie chart"); return; }
-  const P=Number(e.protein_g||0), C=Number(e.carbs_g||0), F=Number(e.fat_g||0);
-  const pCal=P*4, cCal=C*4, fCal=F*9;
-  const total=pCal+cCal+fCal;
-  if(total<=0){ drawEmpty(c,"Macros are zero"); return; }
-  const cx=w/2, cy=h/2+6, r=Math.min(w,h)*0.28;
-  let a=-Math.PI/2;
-  const slices=[
-    {val:pCal,col:"rgba(74,163,255,.9)"},
-    {val:cCal,col:"rgba(255,198,110,.9)"},
-    {val:fCal,col:"rgba(42,211,125,.9)"}
-  ];
-  slices.forEach(s=>{
-    const ang=(s.val/total)*Math.PI*2;
-    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,r,a,a+ang); g.closePath();
-    g.fillStyle=s.col; g.fill(); a+=ang;
-  });
-  g.beginPath(); g.arc(cx,cy,r*0.62,0,Math.PI*2); g.fillStyle="rgba(0,0,0,.18)"; g.fill();
-}
-
-/* Export/Import */
-function exportJSON(){
-  const data={settings:loadSettings(), days:loadDays(), exportedAt:new Date().toISOString()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-}
-function exportCSV(){
-  const days=loadDays();
-  if(!days.length){alert("No data");return;}
-  const cols=["date","mode","training","recovery","targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm","notes"];
-  const lines=[cols.join(",")].concat(days.map(r=>cols.map(c=>{
-    const s=String(r[c]??"").replace(/"/g,'""');
-    return `"${s}"`;
-  }).join(",")));
-  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-}
-function importFile(file){
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const txt=String(reader.result||"");
-    const name=(file.name||"").toLowerCase();
-    if(name.endsWith(".json")){
-      try{
-        const obj=JSON.parse(txt);
-        const days=Array.isArray(obj.days)?obj.days:(Array.isArray(obj)?obj:[]);
-        if(obj.settings) saveSettings(obj.settings);
-        if(days.length) saveDays(days);
-        ensureMonthSeed(); renderAll(); alert("Import complete (JSON)");
-      }catch(e){ alert("Invalid JSON"); }
-      return;
-    }
-    if(name.endsWith(".csv")){
-      const lines=txt.split(/\r?\n/).filter(Boolean);
-      if(lines.length<2){alert("Empty CSV");return;}
-      const head=lines.shift().split(",").map(s=>s.replace(/^"|"$/g,""));
-      const out=lines.map(l=>{
-        const cells=l.match(/("([^"]|"")*"|[^,]*)/g).map(x=>x.replace(/^,?/,"").replace(/^"|"$/g,"").replace(/""/g,'"'));
-        const o={}; head.forEach((h,i)=>o[h]=cells[i]??"");
-        ["targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm"].forEach(k=>{
-          if(o[k]==="") o[k]=null; else {const n=Number(o[k]); o[k]=Number.isFinite(n)?n:o[k];}
-        });
-        return o;
-      });
-      saveDays(out);
-      ensureMonthSeed(); renderAll(); alert("Import complete (CSV)");
-      return;
-    }
+el("fileImport").addEventListener("change", async (ev)=>{
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  const txt = await f.text();
+  if(f.name.toLowerCase().endsWith(".json")){
+    try{
+      const obj = JSON.parse(txt);
+      if(obj.profile) saveJSON(LS_PROFILE, obj.profile);
+      if(Array.isArray(obj.entries)) setEntries(obj.entries);
+      render();
+    }catch(_){ alert("Invalid JSON"); }
+  }else if(f.name.toLowerCase().endsWith(".csv")){
+    // Simple CSV import matching our export (quoted)
+    const lines = txt.split(/\r?\n/).filter(Boolean);
+    if(lines.length<2){ alert("CSV empty"); return; }
+    const head = lines.shift().split(",").map(s=>s.replace(/^"|"$/g,""));
+    const out = [];
+    lines.forEach(line=>{
+      const parts = [];
+      let cur="", inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='\"'){
+          if(inQ && line[i+1]==='\"'){ cur+='\"'; i++; }
+          else inQ=!inQ;
+        }else if(ch===',' && !inQ){ parts.push(cur); cur=""; }
+        else cur+=ch;
+      }
+      parts.push(cur);
+      const o = {};
+      head.forEach((h,i)=>{ o[h]=parts[i] ?? ""; });
+      const e = {
+        date:o.date,
+        mode:o.mode||"fatloss",
+        training:o.training||"rest",
+        target: toNum(o.target),
+        eaten: toNum(o.eaten),
+        burn: toNum(o.burn),
+        weight: toNum(o.weight),
+        bodyfat: toNum(o.bodyfat),
+        protein: toNum(o.protein),
+        carbs: toNum(o.carbs),
+        fat: toNum(o.fat),
+        notes: (o.notes||"").replace(/^"|"$/g,""),
+        updatedAt: o.updatedAt||new Date().toISOString()
+      };
+      if(e.date) out.push(e);
+    });
+    setEntries(out);
+    render();
+  }else{
     alert("Unsupported file type");
-  };
-  reader.readAsText(file);
-}
-function monthlySnapshot(){
-  const days=loadDays();
-  const key=`${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const month=days.filter(d=>d.date?.startsWith(key));
-  const ts=new Date().toISOString().replace(/[:.]/g,"-");
-  const blob=new Blob([JSON.stringify({month:key,days:month,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`snapshot_${key}_${ts}.json`;
-  a.click();
-}
-
-/* Wiring */
-$id("prevBtn").onclick=()=>{ view.m--; if(view.m<0){view.m=11;view.y--;} ensureMonthSeed(); renderAll(); };
-$id("nextBtn").onclick=()=>{ view.m++; if(view.m>11){view.m=0;view.y++;} ensureMonthSeed(); renderAll(); };
-$id("todayBtn").onclick=()=>{ const d=new Date(); view={y:d.getFullYear(),m:d.getMonth()}; ensureMonthSeed(); renderAll(); };
-$id("exportJsonBtn").onclick=exportJSON;
-$id("exportCsvBtn").onclick=exportCSV;
-$id("importBtn").onclick=()=> $id("filePick").click();
-$id("filePick").addEventListener("change",(e)=>{ const f=e.target.files?.[0]; if(f) importFile(f); e.target.value=""; });
-$id("snapshotBtn").onclick=monthlySnapshot;
-$id("resetBtn").onclick=()=>{ if(!confirm("Reset local data?")) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY); ensureMonthSeed(); renderAll(); };
-
-$id("closeBtn").onclick=closeDay;
-$id("saveBtn").onclick=saveDay;
-$id("backdrop").addEventListener("click",(e)=>{ if(e.target.id==="backdrop") closeDay(); });
-$id("fMode").addEventListener("change", upTargetPreview);
-$id("fTrain").addEventListener("change", upTargetPreview);
-
-ensureMonthSeed();
-renderAll();
-function renderAll(){ renderModes(); renderCalendar(); computeKPIs(); }
-</script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Body Composition Control Dashboard</title>
-<style>
-:root{
-  --bg:#070b12;
-  --text:#eaf0ff;
-  --muted:#9fb0cc;
-  --line:#1f2a40;
-  --accent:#4aa3ff;
-  --good:#2ad37d;
-  --warn:#ffc66e;
-  --bad:#ff5b5b;
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
-  background: radial-gradient(1200px 700px at 20% 0%, #0e1730, var(--bg));
-  color:var(--text);
-}
-.wrap{max-width:1200px;margin:0 auto;padding:16px}
-.top{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  position:sticky;top:0;background:linear-gradient(180deg, rgba(7,11,18,.92), rgba(7,11,18,.70));
-  backdrop-filter: blur(10px);
-  padding:12px 0; z-index:5;
-}
-.brand{display:flex;align-items:center;gap:10px}
-.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4aa3ff,#2ad37d);box-shadow:var(--shadow)}
-.brand h1{font-size:16px;margin:0}
-.brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
-.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.btn{
-  appearance:none;border:1px solid var(--line);background:rgba(16,26,45,.8);
-  color:var(--text);padding:8px 10px;border-radius:12px;cursor:pointer;
-  font-size:12px; line-height:1; display:inline-flex; align-items:center; gap:8px;
-}
-.btn:hover{border-color:#2d3d5f}
-.btn.primary{background:linear-gradient(135deg,#4aa3ff,#2ad37d);border-color:transparent}
-.btn.danger{background:linear-gradient(135deg,#ff5b5b,#ff9191);border-color:transparent}
-.btn.ghost{background:transparent}
-.pill{
-  padding:7px 10px;border-radius:999px;border:1px solid var(--line);
-  background:rgba(0,0,0,.25); font-size:12px; color:var(--muted);
-}
-.modes{display:flex;gap:6px;align-items:center}
-.mode{
-  padding:8px 10px;border-radius:999px;border:1px solid var(--line);
-  background:rgba(0,0,0,.25); font-size:12px; cursor:pointer; user-select:none;
-  opacity:.7;
-}
-.mode.active{opacity:1;border-color:var(--accent); box-shadow: 0 0 0 2px rgba(74,163,255,.15) inset}
-.grid{display:grid;grid-template-columns: 1.4fr .9fr; gap:14px; margin-top:12px}
-@media(max-width:980px){.grid{grid-template-columns:1fr}}
-.card{
-  border:1px solid var(--line);
-  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
-  border-radius:18px; padding:14px; box-shadow:var(--shadow);
-}
-.card h2{margin:0 0 10px 0;font-size:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{border:1px solid var(--line);background:rgba(0,0,0,.22);border-radius:14px;padding:10px}
-.kpi .l{font-size:11px;color:var(--muted)}
-.kpi .v{font-size:16px;font-weight:700;margin-top:4px}
-.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:980px){.split{grid-template-columns:1fr}}
-.calendar{
-  display:grid;grid-template-columns:repeat(7,1fr);gap:8px;
-}
-.dow{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.day{
-  min-height:92px;border:1px solid var(--line);border-radius:14px;padding:8px;
-  background:rgba(0,0,0,.22); cursor:pointer; position:relative; overflow:hidden;
-}
-.day:hover{border-color:#2d3d5f}
-.day .num{font-size:11px;color:var(--muted)}
-.badge{display:inline-block;margin-top:8px;font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(16,26,45,.6)}
-.badge.good{border-color:rgba(42,211,125,.5);color:#bff7da}
-.badge.warn{border-color:rgba(255,198,110,.5);color:#ffe2b3}
-.badge.bad{border-color:rgba(255,91,91,.5);color:#ffd0d0}
-.day .mini{font-size:10px;color:var(--muted);margin-top:6px}
-.day .dot{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%}
-.dot.g{background:var(--good)} .dot.y{background:var(--warn)} .dot.r{background:var(--bad)}
-hr{border:0;border-top:1px solid var(--line);margin:12px 0}
-.small{font-size:12px;color:var(--muted)}
-canvas{width:100%;height:220px;display:block;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.22)}
-.footer{margin-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.backdrop{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);
-  display:none;align-items:center;justify-content:center;z-index:20;
-}
-.modal{
-  width:min(980px,calc(100vw - 24px));
-  max-height:calc(100vh - 24px);
-  overflow:auto;
-  border:1px solid var(--line);
-  border-radius:18px;
-  background:linear-gradient(180deg, rgba(16,26,45,.98), rgba(7,11,18,.98));
-  box-shadow:var(--shadow);
-  padding:14px;
-}
-.modalTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.modalTop h3{margin:0;font-size:14px}
-.form{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px
-}
-@media(max-width:980px){.form{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.form{grid-template-columns:1fr}}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:11px;color:var(--muted)}
-.field input,.field select,.field textarea{
-  background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--text);
-  border-radius:12px;padding:10px;font-size:12px;outline:none;
-}
-.field textarea{min-height:90px;resize:vertical}
-.hint{font-size:11px;color:var(--muted)}
-.lock{font-size:11px;color:var(--muted);border:1px dashed var(--line);padding:8px;border-radius:12px;background:rgba(0,0,0,.18)}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <div class="brand">
-      <div class="logo"></div>
-      <div>
-        <h1>Body Composition Control</h1>
-        <div class="sub">Fat loss · Weight loss · Weight gain — single dashboard</div>
-      </div>
-    </div>
-    <div class="controls">
-      <div class="modes" id="modes"></div>
-      <span class="pill" id="monthLabel">—</span>
-      <button class="btn" id="prevBtn">◀</button>
-      <button class="btn" id="nextBtn">▶</button>
-      <button class="btn" id="todayBtn">Today</button>
-      <button class="btn" id="profileBtn">Profile</button>
-      <button class="btn" id="exportJsonBtn">Export JSON</button>
-      <button class="btn" id="exportCsvBtn">Export CSV</button>
-      <button class="btn" id="importBtn">Import</button>
-      <button class="btn" id="snapshotBtn">Monthly Snapshot</button>
-      <button class="btn danger" id="resetBtn">Reset</button>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="card">
-      <h2>This Month</h2>
-      <div class="calendar" id="dow"></div>
-      <div style="height:8px"></div>
-      <div class="calendar" id="cal"></div>
-      <div class="footer">
-        <div>Click any day to edit. Data saves automatically (local).</div>
-        <div><span class="small">Pro features (Drive sync, payments) are placeholders.</span></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Dashboard</h2>
-      <div class="kpis">
-        <div class="kpi"><div class="l">Avg deficit / surplus (7d)</div><div class="v" id="kDef">—</div><div class="s" id="kDefS">—</div></div>
-        <div class="kpi"><div class="l">Weight trend (7d)</div><div class="v" id="kWt">—</div><div class="s" id="kWtS">—</div></div>
-        <div class="kpi"><div class="l">Adherence (7d)</div><div class="v" id="kAdh">—</div><div class="s" id="kAdhS">—</div></div>
-      </div>
-      <hr/>
-      <div class="split">
-        <div>
-          <div class="small">Weight trend (last 14 entries)</div>
-          <canvas id="cWeight" width="800" height="240"></canvas>
-        </div>
-        <div>
-          <div class="small">Deficit / surplus (last 14 entries)</div>
-          <canvas id="cDef" width="800" height="240"></canvas>
-        </div>
-      </div>
-      <div style="height:12px"></div>
-      <div class="split">
-        <div>
-          <div class="small">Macros (today / last entry)</div>
-          <canvas id="cPie" width="800" height="240"></canvas>
-        </div>
-        <div class="lock">
-          <strong>NO‑THINK RULE CARD</strong><br/><br/>
-          1) Pick Mode: Fat loss / Weight loss / Weight gain<br/>
-          2) Log: Calories eaten + Total burn (TDEE) + Weight (morning)<br/>
-          3) The only math that matters: <strong>TDEE − Intake</strong><br/>
-          4) Adjust only if: 14 days flat + adherence ≥ 80%<br/>
-          5) Refeed trigger: 2+ low recoveries in a row OR performance tanks<br/>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="backdrop" id="backdrop">
-  <div class="modal">
-    <div class="modalTop">
-      <h3 id="modalTitle">Day</h3>
-      <div class="row">
-        <button class="btn" id="saveBtn">Save</button>
-        <button class="btn ghost" id="closeBtn">Close</button>
-      </div>
-    </div>
-    <div class="hint" id="modalHint">Targets auto-calc by mode + training type. Enter Total Burn if WHOOP calories are hidden.</div>
-    <div class="form">
-      <div class="field">
-        <label>Mode</label>
-        <select id="fMode">
-          <option value="fat_loss">Fat loss</option>
-          <option value="weight_loss">Weight loss</option>
-          <option value="weight_gain">Weight gain</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Training</label>
-        <select id="fTrain">
-          <option>Rest</option><option>Gym</option><option>Padel</option><option>Football</option>
-          <option>Walk</option><option>Swim</option><option>Gym + Padel</option><option>Gym + Football</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Recovery</label>
-        <select id="fRec">
-          <option value="">—</option>
-          <option value="g">Green</option>
-          <option value="y">Yellow</option>
-          <option value="r">Red</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Calories eaten</label>
-        <input id="fEat" type="number" placeholder="e.g. 2450" />
-      </div>
-      <div class="field">
-        <label>Total burn (TDEE)</label>
-        <input id="fBurn" type="number" placeholder="e.g. 3100" />
-      </div>
-      <div class="field">
-        <label>Target calories (auto)</label>
-        <input id="fTarget" type="number" disabled />
-      </div>
-
-      <div class="field">
-        <label>Protein (g)</label>
-        <input id="fP" type="number" placeholder="e.g. 200" />
-      </div>
-      <div class="field">
-        <label>Carbs (g)</label>
-        <input id="fC" type="number" placeholder="e.g. 220" />
-      </div>
-      <div class="field">
-        <label>Fat (g)</label>
-        <input id="fF" type="number" placeholder="e.g. 70" />
-      </div>
-
-      <div class="field">
-        <label>Weight (kg)</label>
-        <input id="fW" type="number" step="0.1" placeholder="e.g. 99.8" />
-      </div>
-      <div class="field">
-        <label>Waist (cm)</label>
-        <input id="fWaist" type="number" step="0.1" placeholder="optional" />
-      </div>
-      <div class="field">
-        <label>Notes</label>
-        <textarea id="fNotes" placeholder="sleep, hunger, performance..."></textarea>
-      </div>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="filePick" style="display:none" accept=".json,.csv,text/csv,application/json" />
-
-
-<!-- Profile Modal -->
-<div class="backdrop" id="profileBackdrop" style="display:none">
-  <div class="modal" style="max-width:820px">
-    <div class="mh">
-      <div>
-        <div class="mt">Profile (auto math)</div>
-        <div class="ms">Set once. Targets, deficit/surplus, and charts update automatically.</div>
-      </div>
-      <div class="mact">
-        <button class="btn primary" id="profileSaveBtn">Save</button>
-        <button class="btn" id="profileCloseBtn">×</button>
-      </div>
-    </div>
-    <div class="mb">
-      <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px">
-        <div class="kpi">
-          <div class="k">Sex</div>
-          <select id="pSex" class="inp">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </div>
-        <div class="kpi">
-          <div class="k">Activity level (TDEE multiplier)</div>
-          <select id="pAct" class="inp">
-            <option value="1.2">Sedentary (1.2)</option>
-            <option value="1.375">Light (1.375)</option>
-            <option value="1.55" selected>Moderate (1.55)</option>
-            <option value="1.725">Very active (1.725)</option>
-            <option value="1.9">Athlete (1.9)</option>
-          </select>
-        </div>
-        <div class="kpi">
-          <div class="k">Age</div>
-          <input id="pAge" class="inp" type="number" min="10" max="99" step="1" placeholder="e.g., 24">
-        </div>
-        <div class="kpi">
-          <div class="k">Height (cm)</div>
-          <input id="pHeight" class="inp" type="number" min="120" max="230" step="1" placeholder="e.g., 178">
-        </div>
-        <div class="kpi">
-          <div class="k">Weight (kg)</div>
-          <input id="pWeight" class="inp" type="number" min="35" max="250" step="0.1" placeholder="e.g., 85.0">
-        </div>
-        <div class="kpi">
-          <div class="k">Current body fat % (optional)</div>
-          <input id="pBF" class="inp" type="number" min="3" max="60" step="0.1" placeholder="e.g., 18.5">
-        </div>
-      </div>
-
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Goals (used to auto-calc targets)</div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
-        <div class="kpi">
-          <div class="k">Fat loss goal BF% (optional)</div>
-          <input id="gBF" class="inp" type="number" min="5" max="35" step="0.1" placeholder="e.g., 12.0">
-          <div class="s">Used for display only.</div>
-        </div>
-        <div class="kpi">
-          <div class="k">Weight loss rate (kg/week)</div>
-          <input id="gWL" class="inp" type="number" min="0" max="2" step="0.05" placeholder="e.g., 0.6">
-          <div class="s">Auto deficit = rate×7700/7.</div>
-        </div>
-        <div class="kpi">
-          <div class="k">Weight gain rate (kg/week)</div>
-          <input id="gWG" class="inp" type="number" min="0" max="1" step="0.05" placeholder="e.g., 0.25">
-          <div class="s">Auto surplus = rate×7700/7.</div>
-        </div>
-      </div>
-
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Preview (computed)</div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
-        <div class="kpi"><div class="k">BMR</div><div class="v" id="pvBmr">—</div></div>
-        <div class="kpi"><div class="k">TDEE</div><div class="v" id="pvTdee">—</div></div>
-        <div class="kpi"><div class="k">Loss target</div><div class="v" id="pvLoss">—</div><div class="s">kcal/day</div></div>
-        <div class="kpi"><div class="k">Gain target</div><div class="v" id="pvGain">—</div><div class="s">kcal/day</div></div>
-      </div>
-
-      <div class="pill" style="margin-top:12px">
-        <div class="t">Notes</div>
-      </div>
-      <div class="muted" style="font-size:12px;line-height:1.5">
-        • If you enter <b>Total Burn</b> from WHOOP for a day, the deficit uses it. If blank, it uses your computed TDEE for that day.<br>
-        • Wearables are estimates. Weekly scale trend overrides day-to-day noise.
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-const TARGETS = {
-  fat_loss: { label:"Fat loss", base:2500, rest:2300, hard:2700, protein:200, fat:70 },
-  weight_loss: { label:"Weight loss", base:2350, rest:2150, hard:2550, protein:200, fat:65 },
-  weight_gain: { label:"Weight gain", base:2900, rest:2750, hard:3100, protein:190, fat:85 }
-};
-const STORAGE_KEY = "bc_days_v1";
-const SETTINGS_KEY = "bc_settings_v1";
-
-const PROFILE_KEY = "bc_profile_v1";
-
-function defaultProfile(){
-  return {
-    sex:"male",
-    activity:1.55,
-    age:null,
-    height_cm:null,
-    weight_kg:null,
-    bodyfat:null,
-    goal_bf:null,
-    goal_loss_kgwk:0.6,
-    goal_gain_kgwk:0.25
-  };
-}
-function loadProfile(){
-  const raw = localStorage.getItem(PROFILE_KEY);
-  const p = raw ? Object.assign(defaultProfile(), JSON.parse(raw)) : defaultProfile();
-  // coerce
-  p.activity = Number(p.activity)||1.55;
-  return p;
-}
-function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
-
-function calcBMR(p){
-  const w = safeNum(p.weight_kg), h = safeNum(p.height_cm), a = safeNum(p.age);
-  const bf = safeNum(p.bodyfat);
-  if(w && bf && bf>3 && bf<60){
-    const lean = w*(1-bf/100);
-    return 370 + 21.6*lean; // Katch-McArdle
   }
-  if(!w || !h || !a) return null;
-  const s = (p.sex==="female") ? -161 : 5;
-  return 10*w + 6.25*h - 5*a + s; // Mifflin-St Jeor
-}
-function calcTDEE(p){
-  const bmr = calcBMR(p);
-  if(!bmr) return null;
-  const act = Number(p.activity)||1.55;
-  return bmr*act;
-}
-function kcalPerDayFromRate(kgPerWeek){
-  const r = safeNum(kgPerWeek);
-  if(!r || r<=0) return null;
-  return (r*7700)/7;
-}
-function computedTargets(mode, p){
-  const tdee = calcTDEE(p);
-  const lossK = kcalPerDayFromRate(p.goal_loss_kgwk) || 600;
-  const gainK = kcalPerDayFromRate(p.goal_gain_kgwk) || 250;
-  // mode mapping: fat_loss uses lossK, weight_loss uses 0.75*lossK, weight_gain uses gainK
-  let target = null;
-  if(tdee){
-    if(mode==="weight_gain") target = tdee + gainK;
-    else if(mode==="weight_loss") target = tdee - (lossK*0.75);
-    else target = tdee - lossK;
-  }
-  // macro targets (simple, sane defaults)
-  const w = safeNum(p.weight_kg);
-  const prot = w ? (mode==="weight_gain" ? Math.round(1.8*w) : Math.round(2.2*w)) : (TARGETS[mode]?.protein||200);
-  const fatg = w ? Math.round(0.8*w) : (TARGETS[mode]?.fat||70);
-  return {tdee, target: target? Math.round(target): null, protein: prot, fat: fatg};
-}
+  ev.target.value="";
+});
 
-const $id = (id)=>document.getElementById(id);
-const iso = (d)=> new Date(d).toISOString().slice(0,10);
-function safeNum(v){const n=Number(v); return Number.isFinite(n)?n:null;}
+/* ===== Month Nav ===== */
+el("btnPrev").addEventListener("click", ()=>{
+  const ui=getUI();
+  const d=new Date(ui.y, ui.m-1, 1);
+  ui.y=d.getFullYear(); ui.m=d.getMonth();
+  setUI(ui); render();
+});
+el("btnNext").addEventListener("click", ()=>{
+  const ui=getUI();
+  const d=new Date(ui.y, ui.m+1, 1);
+  ui.y=d.getFullYear(); ui.m=d.getMonth();
+  setUI(ui); render();
+});
+el("btnToday").addEventListener("click", ()=>{
+  const ui=getUI();
+  const d=new Date();
+  ui.y=d.getFullYear(); ui.m=d.getMonth();
+  setUI(ui); render();
+});
+el("btnProfile").addEventListener("click", openProfile);
 
-let view = (()=>{ const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
+document.addEventListener("click", (ev)=>{
+  const day = ev.target.closest(".day");
+  if(day && day.dataset.date) openDay(day.dataset.date);
+});
 
-function loadSettings(){
-  const raw = localStorage.getItem(SETTINGS_KEY);
-  const s = raw? JSON.parse(raw): {mode:"fat_loss"};
-  if(!TARGETS[s.mode]) s.mode="fat_loss";
-  return s;
-}
+document.querySelectorAll("#modePills .pill").forEach(pill=>{
+  pill.addEventListener("click", ()=>{
+    const ui=getUI();
+    ui.mode = pill.dataset.mode;
+    setUI(ui);
+    render();
+  });
+});
 
-function normalizeArr(x){
-  if(Array.isArray(x)) return x;
-  if(!x) return [];
-  if(typeof x === "object") return Object.values(x);
-  return [];
-}
+/* ===== Monthly snapshot ===== */
+el("btnSnapshot").addEventListener("click", ()=>{
+  const ui=getUI();
+  const ym = `${ui.y}-${pad2(ui.m+1)}`;
+  const entries = getEntries().filter(e=>e.date.startsWith(ym));
+  const payload = {month: ym, profile:getProfile(), mode: ui.mode, entries, exportedAt:new Date().toISOString()};
+  download(`bodycomp_snapshot_${ym}.json`, JSON.stringify(payload,null,2), "application/json");
+});
 
-function effectiveBurn(entry, tdee){
-  const b = safeNum(entry.totalBurn);
-  if(b) return b;
-  return tdee ? Math.round(tdee) : null;
-}
+/* ===== Reset ===== */
+el("btnReset").addEventListener("click", ()=>{
+  if(!confirm("Delete all local data for this tracker?")) return;
+  localStorage.removeItem(LS_PROFILE);
+  localStorage.removeItem(LS_ENTRIES);
+  localStorage.removeItem(LS_UI);
+  render();
+});
 
-function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
-
-function loadDays(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  let d = raw ? JSON.parse(raw) : [];
-  if(!Array.isArray(d)) d = Object.values(d||{});
-  const map = new Map();
-  d.forEach(x=>{ if(x && x.date) map.set(x.date, x); });
-  return Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date));
-}
-function saveDays(days){ localStorage.setItem(STORAGE_KEY, JSON.stringify(days)); }
-
-function deriveTarget(mode, training){
-  const t = TARGETS[mode] || TARGETS.fat_loss;
-  const p = loadProfile();
-  const comp = computedTargets(mode, p);
-  // Use computed base target when possible, otherwise fallback to hard-coded defaults.
-  const base = (comp && comp.target) ? comp.target : t.base;
-
-  // Keep your original day-type structure as offsets around the base.
-  const restDelta = (t.rest - t.base);
-  const hardDelta = (t.hard - t.base);
-
-  const tr = (training||"Rest").toLowerCase();
-  let target = base;
-  if(tr.includes("rest")) target = base + restDelta;
-  // "hard" days: football or gym+padel or gym+football etc.
-  if(tr.includes("football") || tr.includes("gym +") || (tr.includes("padel") && tr.includes("gym"))) target = base + hardDelta;
-
-  const protein = (comp && comp.protein) ? comp.protein : t.protein;
-  const fat = (comp && comp.fat) ? comp.fat : t.fat;
-  const carbs = Math.max(0, Math.round((target - protein*4 - fat*9)/4));
-  return {target, protein, fat, carbs};
-}
-
-function entryTargets(e){
-  const s = loadSettings();
-  const mode = e.mode || s.mode || "fat_loss";
-  const training = e.training || "Rest";
-  const der = deriveTarget(mode, training);
-  const t = (e.targetLocked ? (safeNum(e.targetCalories) ?? der.target) : der.target);
-  return {mode, training, target:t, protein:der.protein, fat:der.fat, carbs:der.carbs};
-}
-
-
-function ensureMonthSeed(){
-  const days = loadDays();
-  const last = new Date(view.y, view.m+1, 0).getDate();
-  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const have = new Set(days.filter(x=>x.date?.startsWith(monthKey)).map(x=>x.date));
-  const s = loadSettings();
-  let changed=false;
-  for(let d=1; d<=last; d++){
-    const dt = iso(new Date(view.y, view.m, d));
-    if(!have.has(dt)){
-      const der = deriveTarget(s.mode,"Rest");
-      days.push({
-        date:dt, mode:s.mode, training:"Rest", recovery:"",
-        caloriesEaten:null, totalBurn:null,
-        targetCalories:der.target,
-        protein_g:der.protein, carbs_g:null, fat_g:der.fat,
-        weight_kg:null, waist_cm:null, notes:""
-      });
-      changed=true;
-    }
-  }
-  if(changed) saveDays(days);
-}
-
-function renderModes(){
-  const s=loadSettings();
-  const modesEl=$id("modes");
-  modesEl.innerHTML="";
-  Object.keys(TARGETS).forEach(k=>{
-    const b=document.createElement("div");
-    b.className="mode"+(s.mode===k?" active":"");
-    b.textContent=TARGETS[k].label;
-    b.onclick=()=>{
-      s.mode=k; saveSettings(s);
-      const days=loadDays();
-      const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-      days.forEach(e=>{
-        if(e.date?.startsWith(monthKey)){
-          if(!e.mode) e.mode=k;
-          const der = deriveTarget(e.mode||k, e.training||"Rest");
-          e.targetCalories = der.target;
-          if(e.protein_g==null) e.protein_g = der.protein;
-          if(e.fat_g==null) e.fat_g = der.fat;
-          if(e.carbs_g==null) e.carbs_g = der.carbs;
-        }
-      });
-      saveDays(days);
-      
-// Profile modal wiring
-function openProfile(){
-  const p = loadProfile();
-  $id("pSex").value = p.sex || "male";
-  $id("pAct").value = String(p.activity||1.55);
-  $id("pAge").value = p.age ?? "";
-  $id("pHeight").value = p.height_cm ?? "";
-  $id("pWeight").value = p.weight_kg ?? "";
-  $id("pBF").value = p.bodyfat ?? "";
-  $id("gBF").value = p.goal_bf ?? "";
-  $id("gWL").value = p.goal_loss_kgwk ?? 0.6;
-  $id("gWG").value = p.goal_gain_kgwk ?? 0.25;
-  $id("profileBackdrop").style.display="flex";
+/* ===== Init ===== */
+(function init(){
+  // Seed UI if missing
+  const ui = getUI();
+  setUI(ui);
+  // Show profile preview once
   updateProfilePreview();
-}
-function closeProfile(){ $id("profileBackdrop").style.display="none"; }
-function readProfileFromUI(){
-  return {
-    sex: $id("pSex").value,
-    activity: Number($id("pAct").value)||1.55,
-    age: safeNum($id("pAge").value),
-    height_cm: safeNum($id("pHeight").value),
-    weight_kg: safeNum($id("pWeight").value),
-    bodyfat: safeNum($id("pBF").value),
-    goal_bf: safeNum($id("gBF").value),
-    goal_loss_kgwk: safeNum($id("gWL").value) || 0.6,
-    goal_gain_kgwk: safeNum($id("gWG").value) || 0.25
-  };
-}
-function updateProfilePreview(){
-  const p = readProfileFromUI();
-  const bmr = calcBMR(p);
-  const tdee = calcTDEE(p);
-  const loss = computedTargets("fat_loss", p).target;
-  const gain = computedTargets("weight_gain", p).target;
-  $id("pvBmr").textContent = bmr ? Math.round(bmr)+" kcal" : "—";
-  $id("pvTdee").textContent = tdee ? Math.round(tdee)+" kcal" : "—";
-  $id("pvLoss").textContent = loss ? loss : "—";
-  $id("pvGain").textContent = gain ? gain : "—";
-}
-function saveProfileFromUI(){
-  const p = readProfileFromUI();
-  // minimal validation: if any are set, require the core set for Mifflin; BF route only needs weight.
-  const hasAny = Object.values(p).some(v=>v!==null && v!=="" && v!==undefined);
-  if(hasAny){
-    const bmr = calcBMR(p);
-    if(!bmr){
-      alert("Profile incomplete. Enter at least Weight + Bodyfat% OR Weight + Height + Age.");
-      return;
-    }
-  }
-  saveProfile(p);
-  closeProfile();
-  renderAll();
-}
-
-["pSex","pAct","pAge","pHeight","pWeight","pBF","gBF","gWL","gWG"].forEach(id=>{
-  const el = $id(id); if(el) el.addEventListener("input", updateProfilePreview);
-});
-
-$id("profileBtn").onclick=openProfile;
-$id("profileCloseBtn").onclick=closeProfile;
-$id("profileSaveBtn").onclick=saveProfileFromUI;
-$id("profileBackdrop").addEventListener("click",(e)=>{ if(e.target.id==="profileBackdrop") closeProfile(); });
-
-ensureMonthSeed();
-      renderAll();
-    };
-    modesEl.appendChild(b);
-  });
-}
-
-function renderCalendar(){
-  $id("monthLabel").textContent = new Date(view.y, view.m, 1).toLocaleString(undefined, {month:"long", year:"numeric"});
-  const dow = $id("dow"); dow.innerHTML="";
-  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(x=>{
-    const d=document.createElement("div"); d.className="dow"; d.textContent=x; dow.appendChild(d);
-  });
-  const cal = $id("cal"); cal.innerHTML="";
-  const first = new Date(view.y, view.m, 1);
-  let start = first.getDay(); start = (start===0)?6:(start-1);
-  for(let i=0;i<start;i++){ const b=document.createElement("div"); b.className="day"; b.style.visibility="hidden"; cal.appendChild(b); }
-  const days = loadDays();
-  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const map = new Map(days.filter(d=>d.date?.startsWith(monthKey)).map(d=>[d.date,d]));
-  const last = new Date(view.y, view.m+1, 0).getDate();
-  for(let d=1; d<=last; d++){
-    const ds = iso(new Date(view.y, view.m, d));
-    const e = map.get(ds) || {date:ds, mode:loadSettings().mode, training:"Rest"};
-    const der = deriveTarget(e.mode||loadSettings().mode, e.training||"Rest");
-    const target = e.targetCalories ?? der.target;
-
-    const el=document.createElement("div");
-    el.className="day";
-    el.onclick=()=>openDay(ds);
-    el.innerHTML = `<div class="num">${d}</div>`;
-    if(e.recovery==="g"||e.recovery==="y"||e.recovery==="r"){
-      const dot=document.createElement("div"); dot.className="dot "+e.recovery; el.appendChild(dot);
-    }
-    let badgeClass="";
-    if(e.caloriesEaten!=null && target!=null){
-      const diff = Math.abs(Number(e.caloriesEaten)-Number(target));
-      badgeClass = diff<=100 ? "good" : (diff<=250 ? "warn" : "bad");
-    }
-    const b=document.createElement("div"); b.className="badge "+badgeClass; b.textContent=`Target ${target}`; el.appendChild(b);
-    const mini=document.createElement("div"); mini.className="mini";
-    mini.textContent=`${(e.training||"Rest")} · ${(e.weight_kg!=null?e.weight_kg+"kg":"—")} · ${(e.caloriesEaten!=null?e.caloriesEaten+"kcal":"—")}`;
-    el.appendChild(mini);
-    cal.appendChild(el);
-  }
-}
-
-/* Modal */
-let activeDate=null;
-function openDay(dateStr){
-  activeDate=dateStr;
-  const days=loadDays();
-  const e=days.find(x=>x.date===dateStr) || null;
-  const s=loadSettings();
-  const mode=e?.mode || s.mode;
-  $id("modalTitle").textContent=`Edit: ${dateStr}`;
-  $id("fMode").value=mode;
-  $id("fTrain").value=e?.training || "Rest";
-  $id("fRec").value=e?.recovery || "";
-  $id("fEat").value=e?.caloriesEaten ?? "";
-  $id("fBurn").value=e?.totalBurn ?? "";
-  const der=deriveTarget(mode, e?.training||"Rest");
-  $id("fTarget").value=e?.targetCalories ?? der.target;
-  $id("fP").value=e?.protein_g ?? der.protein;
-  $id("fF").value=e?.fat_g ?? der.fat;
-  $id("fC").value=e?.carbs_g ?? der.carbs;
-  $id("fW").value=e?.weight_kg ?? "";
-  $id("fWaist").value=e?.waist_cm ?? "";
-  $id("fNotes").value=e?.notes ?? "";
-  $id("backdrop").style.display="flex";
-}
-function closeDay(){ $id("backdrop").style.display="none"; activeDate=null; }
-function upTargetPreview(){
-  const mode=$id("fMode").value;
-  const tr=$id("fTrain").value;
-  const der=deriveTarget(mode,tr);
-  $id("fTarget").value=der.target;
-}
-function saveDay(){
-  if(!activeDate) return;
-  const days=loadDays();
-  let e=days.find(x=>x.date===activeDate);
-  if(!e){ e={date:activeDate}; days.push(e); }
-  e.mode=$id("fMode").value;
-  e.training=$id("fTrain").value;
-  e.recovery=$id("fRec").value || "";
-  const der=deriveTarget(e.mode,e.training);
-  const autoT = entryTargets(e).target;
-  const manualT = safeNum($id("fTarget").value);
-  e.targetLocked = (manualT!=null && manualT!==autoT);
-  e.targetCalories = (manualT!=null ? manualT : autoT);
-  e.caloriesEaten = safeNum($id("fEat").value);
-  e.totalBurn = safeNum($id("fBurn").value);
-  e.protein_g = safeNum($id("fP").value) ?? der.protein;
-  e.carbs_g = safeNum($id("fC").value) ?? der.carbs;
-  e.fat_g = safeNum($id("fF").value) ?? der.fat;
-  e.weight_kg = safeNum($id("fW").value);
-  e.waist_cm = safeNum($id("fWaist").value);
-  e.notes = ($id("fNotes").value||"").slice(0,2000);
-  saveDays(days);
-  closeDay();
-  renderAll();
-}
-
-/* KPIs + Charts */
-function ctx2d(c){ return c.getContext("2d"); }
-function clearCanvas(c){
-  const g=ctx2d(c);
-  g.clearRect(0,0,c.width,c.height);
-  g.fillStyle="rgba(0,0,0,.12)"; g.fillRect(0,0,c.width,c.height);
-  return g;
-}
-function drawEmpty(c, text){
-  const g=clearCanvas(c);
-  g.fillStyle="rgba(159,176,204,.85)";
-  g.font="14px system-ui";
-  g.fillText(text, 16, 28);
-}
-function drawAxes(g,w,h){
-  g.strokeStyle="rgba(31,42,64,.9)";
-  g.beginPath(); g.moveTo(50,16); g.lineTo(50,h-34); g.lineTo(w-16,h-34); g.stroke();
-}
-function getRecent(n=14){
-  const d=loadDays().filter(e=>e.weight_kg!=null || e.caloriesEaten!=null || e.totalBurn!=null);
-  return d.slice(-n);
-}
-function setKpi(id,v,s){ $id(id).textContent=v; $id(id+"S").textContent=s||""; }
-
-function computeKPIs(){
-  const entries=getRecent(30);
-  const tdee = calcTDEE(loadProfile());
-  if(!entries.length){
-    setKpi("kDef","—","Log at least 1 day");
-    setKpi("kWt","—","");
-    setKpi("kAdh","—","");
-    drawEmpty($id("cWeight"),"No data");
-    drawEmpty($id("cDef"),"No data");
-    drawEmpty($id("cPie"),"No data");
-    return;
-  }
-  const last7=entries.slice(-7);
-  const defs=last7.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null).filter(v=>v!=null);
-  const avgDef = defs.length ? Math.round(defs.reduce((a,b)=>a+b,0)/defs.length) : null;
-
-  const ws=last7.map(e=>e.weight_kg).filter(v=>v!=null);
-  const wtTrend = ws.length>=2 ? (ws[ws.length-1]-ws[0]) : null;
-
-  const den = last7.filter(e=>entryTargets(e).target!=null).length || 0;
-  let adh=null;
-  if(den){
-    const hits=last7.filter(e=>{
-      if(e.targetCalories==null || e.caloriesEaten==null) return false;
-      const tP = (TARGETS[e.mode||"fat_loss"]?.protein ?? 200) - 10;
-      return Math.abs(e.caloriesEaten-e.targetCalories)<=100 && (e.protein_g==null || e.protein_g>=tP);
-    }).length;
-    adh=Math.round(100*hits/den);
-  }
-
-  const last2=last7.slice(-2);
-  const lowRec = last2.length===2 && last2.every(e=>e.recovery==="r"||e.recovery==="y");
-  const suggestRefeed = lowRec && avgDef!=null && avgDef>500;
-
-  setKpi("kDef", avgDef==null?"—":`${avgDef} kcal`, suggestRefeed?"Refeed suggested (low recovery)":"Avg daily deficit/surplus");
-  setKpi("kWt", wtTrend==null?"—":`${wtTrend.toFixed(1)} kg`, "7‑day change");
-  setKpi("kAdh", adh==null?"—":`${adh}%`, "Within ±100 kcal target");
-
-  drawWeight($id("cWeight"), entries.slice(-14));
-  drawDef($id("cDef"), entries.slice(-14));
-  drawPie($id("cPie"), entries[entries.length-1]);
-}
-
-function drawWeight(c, entries){
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  drawAxes(g,w,h);
-  const pts=entries.map((e,i)=>({i,v:e.weight_kg})).filter(p=>p.v!=null);
-  if(pts.length<2){ drawEmpty(c,"Need 2+ weight entries"); return; }
-  const vals=pts.map(p=>p.v);
-  const min=Math.min(...vals), max=Math.max(...vals);
-  const pad=(max-min)*0.15 || 1;
-  const lo=min-pad, hi=max+pad;
-  const x0=50,x1=w-16,y0=16,y1=h-34;
-  g.strokeStyle="rgba(74,163,255,.9)"; g.lineWidth=2;
-  g.beginPath();
-  pts.forEach((p,idx)=>{
-    const x=x0+(x1-x0)*(p.i/(entries.length-1));
-    const y=y1-(y1-y0)*((p.v-lo)/(hi-lo));
-    if(idx===0) g.moveTo(x,y); else g.lineTo(x,y);
-  });
-  g.stroke();
-}
-
-function drawDef(c, entries){
-  const tdee=calcTDEE(loadProfile());
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  drawAxes(g,w,h);
-  const vals=entries.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null);
-  const valid=vals.filter(v=>v!=null);
-  if(!valid.length){ drawEmpty(c,"Enter TDEE + Intake"); return; }
-  const max=Math.max(...valid,0), min=Math.min(...valid,0);
-  const pad=(max-min)*0.15 || 100;
-  const lo=min-pad, hi=max+pad;
-  const x0=50,x1=w-16,y0=16,y1=h-34;
-  const yZero=y1-(y1-y0)*((0-lo)/(hi-lo));
-  g.strokeStyle="rgba(31,42,64,.9)"; g.beginPath(); g.moveTo(x0,yZero); g.lineTo(x1,yZero); g.stroke();
-  const bw=(x1-x0)/(entries.length)*0.65;
-  entries.forEach((e,i)=>{
-    const v=(effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null)?(effectiveBurn(e,tdee)-e.caloriesEaten):null;
-    if(v==null) return;
-    const x=x0+(x1-x0)*(i/(entries.length-1));
-    const y=y1-(y1-y0)*((v-lo)/(hi-lo));
-    const top=Math.min(y,yZero), hh=Math.abs(yZero-y);
-    g.fillStyle=v>=0?"rgba(42,211,125,.8)":"rgba(255,91,91,.8)";
-    g.fillRect(x-bw/2, top, bw, hh);
-  });
-}
-
-function drawPie(c, e){
-  const g=clearCanvas(c), w=c.width, h=c.height;
-  if(!e || (e.protein_g==null && e.carbs_g==null && e.fat_g==null)){ drawEmpty(c,"Log macros to see pie chart"); return; }
-  const P=Number(e.protein_g||0), C=Number(e.carbs_g||0), F=Number(e.fat_g||0);
-  const pCal=P*4, cCal=C*4, fCal=F*9;
-  const total=pCal+cCal+fCal;
-  if(total<=0){ drawEmpty(c,"Macros are zero"); return; }
-  const cx=w/2, cy=h/2+6, r=Math.min(w,h)*0.28;
-  let a=-Math.PI/2;
-  const slices=[
-    {val:pCal,col:"rgba(74,163,255,.9)"},
-    {val:cCal,col:"rgba(255,198,110,.9)"},
-    {val:fCal,col:"rgba(42,211,125,.9)"}
-  ];
-  slices.forEach(s=>{
-    const ang=(s.val/total)*Math.PI*2;
-    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,r,a,a+ang); g.closePath();
-    g.fillStyle=s.col; g.fill(); a+=ang;
-  });
-  g.beginPath(); g.arc(cx,cy,r*0.62,0,Math.PI*2); g.fillStyle="rgba(0,0,0,.18)"; g.fill();
-}
-
-/* Export/Import */
-function exportJSON(){
-  const data={settings:loadSettings(), days:loadDays(), exportedAt:new Date().toISOString()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-}
-function exportCSV(){
-  const days=loadDays();
-  if(!days.length){alert("No data");return;}
-  const cols=["date","mode","training","recovery","targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm","notes"];
-  const lines=[cols.join(",")].concat(days.map(r=>cols.map(c=>{
-    const s=String(r[c]??"").replace(/"/g,'""');
-    return `"${s}"`;
-  }).join(",")));
-  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-}
-function importFile(file){
-  const reader=new FileReader();
-  reader.onload=()=>{
-    const txt=String(reader.result||"");
-    const name=(file.name||"").toLowerCase();
-    if(name.endsWith(".json")){
-      try{
-        const obj=JSON.parse(txt);
-        const days=Array.isArray(obj.days)?obj.days:(Array.isArray(obj)?obj:[]);
-        if(obj.settings) saveSettings(obj.settings);
-        if(days.length) saveDays(days);
-        ensureMonthSeed(); renderAll(); alert("Import complete (JSON)");
-      }catch(e){ alert("Invalid JSON"); }
-      return;
-    }
-    if(name.endsWith(".csv")){
-      const lines=txt.split(/\r?\n/).filter(Boolean);
-      if(lines.length<2){alert("Empty CSV");return;}
-      const head=lines.shift().split(",").map(s=>s.replace(/^"|"$/g,""));
-      const out=lines.map(l=>{
-        const cells=l.match(/("([^"]|"")*"|[^,]*)/g).map(x=>x.replace(/^,?/,"").replace(/^"|"$/g,"").replace(/""/g,'"'));
-        const o={}; head.forEach((h,i)=>o[h]=cells[i]??"");
-        ["targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm"].forEach(k=>{
-          if(o[k]==="") o[k]=null; else {const n=Number(o[k]); o[k]=Number.isFinite(n)?n:o[k];}
-        });
-        return o;
-      });
-      saveDays(out);
-      ensureMonthSeed(); renderAll(); alert("Import complete (CSV)");
-      return;
-    }
-    alert("Unsupported file type");
-  };
-  reader.readAsText(file);
-}
-function monthlySnapshot(){
-  const days=loadDays();
-  const key=`${view.y}-${String(view.m+1).padStart(2,'0')}`;
-  const month=days.filter(d=>d.date?.startsWith(key));
-  const ts=new Date().toISOString().replace(/[:.]/g,"-");
-  const blob=new Blob([JSON.stringify({month:key,days:month,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`snapshot_${key}_${ts}.json`;
-  a.click();
-}
-
-/* Wiring */
-$id("prevBtn").onclick=()=>{ view.m--; if(view.m<0){view.m=11;view.y--;} ensureMonthSeed(); renderAll(); };
-$id("nextBtn").onclick=()=>{ view.m++; if(view.m>11){view.m=0;view.y++;} ensureMonthSeed(); renderAll(); };
-$id("todayBtn").onclick=()=>{ const d=new Date(); view={y:d.getFullYear(),m:d.getMonth()}; ensureMonthSeed(); renderAll(); };
-$id("exportJsonBtn").onclick=exportJSON;
-$id("exportCsvBtn").onclick=exportCSV;
-$id("importBtn").onclick=()=> $id("filePick").click();
-$id("filePick").addEventListener("change",(e)=>{ const f=e.target.files?.[0]; if(f) importFile(f); e.target.value=""; });
-$id("snapshotBtn").onclick=monthlySnapshot;
-$id("resetBtn").onclick=()=>{ if(!confirm("Reset local data?")) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY); ensureMonthSeed(); renderAll(); };
-
-$id("closeBtn").onclick=closeDay;
-$id("saveBtn").onclick=saveDay;
-$id("backdrop").addEventListener("click",(e)=>{ if(e.target.id==="backdrop") closeDay(); });
-$id("fMode").addEventListener("change", upTargetPreview);
-$id("fTrain").addEventListener("change", upTargetPreview);
-
-ensureMonthSeed();
-renderAll();
-function renderAll(){ renderModes(); renderCalendar(); computeKPIs(); }
+  render();
+})();
 </script>
 </body>
 </html>
