@@ -141,6 +141,7 @@ canvas{width:100%;height:220px;display:block;border:1px solid var(--line);border
       <button class="btn" id="prevBtn">◀</button>
       <button class="btn" id="nextBtn">▶</button>
       <button class="btn" id="todayBtn">Today</button>
+      <button class="btn" id="profileBtn">Profile</button>
       <button class="btn" id="exportJsonBtn">Export JSON</button>
       <button class="btn" id="exportCsvBtn">Export CSV</button>
       <button class="btn" id="importBtn">Import</button>
@@ -278,6 +279,101 @@ canvas{width:100%;height:220px;display:block;border:1px solid var(--line);border
 
 <input type="file" id="filePick" style="display:none" accept=".json,.csv,text/csv,application/json" />
 
+
+<!-- Profile Modal -->
+<div class="backdrop" id="profileBackdrop" style="display:none">
+  <div class="modal" style="max-width:820px">
+    <div class="mh">
+      <div>
+        <div class="mt">Profile (auto math)</div>
+        <div class="ms">Set once. Targets, deficit/surplus, and charts update automatically.</div>
+      </div>
+      <div class="mact">
+        <button class="btn primary" id="profileSaveBtn">Save</button>
+        <button class="btn" id="profileCloseBtn">×</button>
+      </div>
+    </div>
+    <div class="mb">
+      <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px">
+        <div class="kpi">
+          <div class="k">Sex</div>
+          <select id="pSex" class="inp">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="kpi">
+          <div class="k">Activity level (TDEE multiplier)</div>
+          <select id="pAct" class="inp">
+            <option value="1.2">Sedentary (1.2)</option>
+            <option value="1.375">Light (1.375)</option>
+            <option value="1.55" selected>Moderate (1.55)</option>
+            <option value="1.725">Very active (1.725)</option>
+            <option value="1.9">Athlete (1.9)</option>
+          </select>
+        </div>
+        <div class="kpi">
+          <div class="k">Age</div>
+          <input id="pAge" class="inp" type="number" min="10" max="99" step="1" placeholder="e.g., 24">
+        </div>
+        <div class="kpi">
+          <div class="k">Height (cm)</div>
+          <input id="pHeight" class="inp" type="number" min="120" max="230" step="1" placeholder="e.g., 178">
+        </div>
+        <div class="kpi">
+          <div class="k">Weight (kg)</div>
+          <input id="pWeight" class="inp" type="number" min="35" max="250" step="0.1" placeholder="e.g., 85.0">
+        </div>
+        <div class="kpi">
+          <div class="k">Current body fat % (optional)</div>
+          <input id="pBF" class="inp" type="number" min="3" max="60" step="0.1" placeholder="e.g., 18.5">
+        </div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Goals (used to auto-calc targets)</div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
+        <div class="kpi">
+          <div class="k">Fat loss goal BF% (optional)</div>
+          <input id="gBF" class="inp" type="number" min="5" max="35" step="0.1" placeholder="e.g., 12.0">
+          <div class="s">Used for display only.</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Weight loss rate (kg/week)</div>
+          <input id="gWL" class="inp" type="number" min="0" max="2" step="0.05" placeholder="e.g., 0.6">
+          <div class="s">Auto deficit = rate×7700/7.</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Weight gain rate (kg/week)</div>
+          <input id="gWG" class="inp" type="number" min="0" max="1" step="0.05" placeholder="e.g., 0.25">
+          <div class="s">Auto surplus = rate×7700/7.</div>
+        </div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Preview (computed)</div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
+        <div class="kpi"><div class="k">BMR</div><div class="v" id="pvBmr">—</div></div>
+        <div class="kpi"><div class="k">TDEE</div><div class="v" id="pvTdee">—</div></div>
+        <div class="kpi"><div class="k">Loss target</div><div class="v" id="pvLoss">—</div><div class="s">kcal/day</div></div>
+        <div class="kpi"><div class="k">Gain target</div><div class="v" id="pvGain">—</div><div class="s">kcal/day</div></div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Notes</div>
+      </div>
+      <div class="muted" style="font-size:12px;line-height:1.5">
+        • If you enter <b>Total Burn</b> from WHOOP for a day, the deficit uses it. If blank, it uses your computed TDEE for that day.<br>
+        • Wearables are estimates. Weekly scale trend overrides day-to-day noise.
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const TARGETS = {
   fat_loss: { label:"Fat loss", base:2500, rest:2300, hard:2700, protein:200, fat:70 },
@@ -286,6 +382,71 @@ const TARGETS = {
 };
 const STORAGE_KEY = "bc_days_v1";
 const SETTINGS_KEY = "bc_settings_v1";
+
+const PROFILE_KEY = "bc_profile_v1";
+
+function defaultProfile(){
+  return {
+    sex:"male",
+    activity:1.55,
+    age:null,
+    height_cm:null,
+    weight_kg:null,
+    bodyfat:null,
+    goal_bf:null,
+    goal_loss_kgwk:0.6,
+    goal_gain_kgwk:0.25
+  };
+}
+function loadProfile(){
+  const raw = localStorage.getItem(PROFILE_KEY);
+  const p = raw ? Object.assign(defaultProfile(), JSON.parse(raw)) : defaultProfile();
+  // coerce
+  p.activity = Number(p.activity)||1.55;
+  return p;
+}
+function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+
+function calcBMR(p){
+  const w = safeNum(p.weight_kg), h = safeNum(p.height_cm), a = safeNum(p.age);
+  const bf = safeNum(p.bodyfat);
+  if(w && bf && bf>3 && bf<60){
+    const lean = w*(1-bf/100);
+    return 370 + 21.6*lean; // Katch-McArdle
+  }
+  if(!w || !h || !a) return null;
+  const s = (p.sex==="female") ? -161 : 5;
+  return 10*w + 6.25*h - 5*a + s; // Mifflin-St Jeor
+}
+function calcTDEE(p){
+  const bmr = calcBMR(p);
+  if(!bmr) return null;
+  const act = Number(p.activity)||1.55;
+  return bmr*act;
+}
+function kcalPerDayFromRate(kgPerWeek){
+  const r = safeNum(kgPerWeek);
+  if(!r || r<=0) return null;
+  return (r*7700)/7;
+}
+function computedTargets(mode, p){
+  const tdee = calcTDEE(p);
+  const lossK = kcalPerDayFromRate(p.goal_loss_kgwk) || 600;
+  const gainK = kcalPerDayFromRate(p.goal_gain_kgwk) || 250;
+  // mode mapping: fat_loss uses lossK, weight_loss uses 0.75*lossK, weight_gain uses gainK
+  let target = null;
+  if(tdee){
+    if(mode==="weight_gain") target = tdee + gainK;
+    else if(mode==="weight_loss") target = tdee - (lossK*0.75);
+    else target = tdee - lossK;
+  }
+  // macro targets (simple, sane defaults)
+  const w = safeNum(p.weight_kg);
+  const prot = w ? (mode==="weight_gain" ? Math.round(1.8*w) : Math.round(2.2*w)) : (TARGETS[mode]?.protein||200);
+  const fatg = w ? Math.round(0.8*w) : (TARGETS[mode]?.fat||70);
+  return {tdee, target: target? Math.round(target): null, protein: prot, fat: fatg};
+}
+
 const $id = (id)=>document.getElementById(id);
 const iso = (d)=> new Date(d).toISOString().slice(0,10);
 function safeNum(v){const n=Number(v); return Number.isFinite(n)?n:null;}
@@ -298,6 +459,20 @@ function loadSettings(){
   if(!TARGETS[s.mode]) s.mode="fat_loss";
   return s;
 }
+
+function normalizeArr(x){
+  if(Array.isArray(x)) return x;
+  if(!x) return [];
+  if(typeof x === "object") return Object.values(x);
+  return [];
+}
+
+function effectiveBurn(entry, tdee){
+  const b = safeNum(entry.totalBurn);
+  if(b) return b;
+  return tdee ? Math.round(tdee) : null;
+}
+
 function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 
 function loadDays(){
@@ -312,15 +487,36 @@ function saveDays(days){ localStorage.setItem(STORAGE_KEY, JSON.stringify(days))
 
 function deriveTarget(mode, training){
   const t = TARGETS[mode] || TARGETS.fat_loss;
+  const p = loadProfile();
+  const comp = computedTargets(mode, p);
+  // Use computed base target when possible, otherwise fallback to hard-coded defaults.
+  const base = (comp && comp.target) ? comp.target : t.base;
+
+  // Keep your original day-type structure as offsets around the base.
+  const restDelta = (t.rest - t.base);
+  const hardDelta = (t.hard - t.base);
+
   const tr = (training||"Rest").toLowerCase();
-  let target = t.base;
-  if(tr.includes("rest")) target = t.rest;
-  if(tr.includes("football") || tr.includes("gym +") || (tr.includes("padel") && tr.includes("gym"))) target = t.hard;
-  const protein = t.protein;
-  const fat = t.fat;
+  let target = base;
+  if(tr.includes("rest")) target = base + restDelta;
+  // "hard" days: football or gym+padel or gym+football etc.
+  if(tr.includes("football") || tr.includes("gym +") || (tr.includes("padel") && tr.includes("gym"))) target = base + hardDelta;
+
+  const protein = (comp && comp.protein) ? comp.protein : t.protein;
+  const fat = (comp && comp.fat) ? comp.fat : t.fat;
   const carbs = Math.max(0, Math.round((target - protein*4 - fat*9)/4));
   return {target, protein, fat, carbs};
 }
+
+function entryTargets(e){
+  const s = loadSettings();
+  const mode = e.mode || s.mode || "fat_loss";
+  const training = e.training || "Rest";
+  const der = deriveTarget(mode, training);
+  const t = (e.targetLocked ? (safeNum(e.targetCalories) ?? der.target) : der.target);
+  return {mode, training, target:t, protein:der.protein, fat:der.fat, carbs:der.carbs};
+}
+
 
 function ensureMonthSeed(){
   const days = loadDays();
@@ -369,7 +565,73 @@ function renderModes(){
         }
       });
       saveDays(days);
-      ensureMonthSeed();
+      
+// Profile modal wiring
+function openProfile(){
+  const p = loadProfile();
+  $id("pSex").value = p.sex || "male";
+  $id("pAct").value = String(p.activity||1.55);
+  $id("pAge").value = p.age ?? "";
+  $id("pHeight").value = p.height_cm ?? "";
+  $id("pWeight").value = p.weight_kg ?? "";
+  $id("pBF").value = p.bodyfat ?? "";
+  $id("gBF").value = p.goal_bf ?? "";
+  $id("gWL").value = p.goal_loss_kgwk ?? 0.6;
+  $id("gWG").value = p.goal_gain_kgwk ?? 0.25;
+  $id("profileBackdrop").style.display="flex";
+  updateProfilePreview();
+}
+function closeProfile(){ $id("profileBackdrop").style.display="none"; }
+function readProfileFromUI(){
+  return {
+    sex: $id("pSex").value,
+    activity: Number($id("pAct").value)||1.55,
+    age: safeNum($id("pAge").value),
+    height_cm: safeNum($id("pHeight").value),
+    weight_kg: safeNum($id("pWeight").value),
+    bodyfat: safeNum($id("pBF").value),
+    goal_bf: safeNum($id("gBF").value),
+    goal_loss_kgwk: safeNum($id("gWL").value) || 0.6,
+    goal_gain_kgwk: safeNum($id("gWG").value) || 0.25
+  };
+}
+function updateProfilePreview(){
+  const p = readProfileFromUI();
+  const bmr = calcBMR(p);
+  const tdee = calcTDEE(p);
+  const loss = computedTargets("fat_loss", p).target;
+  const gain = computedTargets("weight_gain", p).target;
+  $id("pvBmr").textContent = bmr ? Math.round(bmr)+" kcal" : "—";
+  $id("pvTdee").textContent = tdee ? Math.round(tdee)+" kcal" : "—";
+  $id("pvLoss").textContent = loss ? loss : "—";
+  $id("pvGain").textContent = gain ? gain : "—";
+}
+function saveProfileFromUI(){
+  const p = readProfileFromUI();
+  // minimal validation: if any are set, require the core set for Mifflin; BF route only needs weight.
+  const hasAny = Object.values(p).some(v=>v!==null && v!=="" && v!==undefined);
+  if(hasAny){
+    const bmr = calcBMR(p);
+    if(!bmr){
+      alert("Profile incomplete. Enter at least Weight + Bodyfat% OR Weight + Height + Age.");
+      return;
+    }
+  }
+  saveProfile(p);
+  closeProfile();
+  renderAll();
+}
+
+["pSex","pAct","pAge","pHeight","pWeight","pBF","gBF","gWL","gWG"].forEach(id=>{
+  const el = $id(id); if(el) el.addEventListener("input", updateProfilePreview);
+});
+
+$id("profileBtn").onclick=openProfile;
+$id("profileCloseBtn").onclick=closeProfile;
+$id("profileSaveBtn").onclick=saveProfileFromUI;
+$id("profileBackdrop").addEventListener("click",(e)=>{ if(e.target.id==="profileBackdrop") closeProfile(); });
+
+ensureMonthSeed();
       renderAll();
     };
     modesEl.appendChild(b);
@@ -456,7 +718,10 @@ function saveDay(){
   e.training=$id("fTrain").value;
   e.recovery=$id("fRec").value || "";
   const der=deriveTarget(e.mode,e.training);
-  e.targetCalories = safeNum($id("fTarget").value) ?? der.target;
+  const autoT = entryTargets(e).target;
+  const manualT = safeNum($id("fTarget").value);
+  e.targetLocked = (manualT!=null && manualT!==autoT);
+  e.targetCalories = (manualT!=null ? manualT : autoT);
   e.caloriesEaten = safeNum($id("fEat").value);
   e.totalBurn = safeNum($id("fBurn").value);
   e.protein_g = safeNum($id("fP").value) ?? der.protein;
@@ -496,6 +761,7 @@ function setKpi(id,v,s){ $id(id).textContent=v; $id(id+"S").textContent=s||""; }
 
 function computeKPIs(){
   const entries=getRecent(30);
+  const tdee = calcTDEE(loadProfile());
   if(!entries.length){
     setKpi("kDef","—","Log at least 1 day");
     setKpi("kWt","—","");
@@ -506,13 +772,13 @@ function computeKPIs(){
     return;
   }
   const last7=entries.slice(-7);
-  const defs=last7.map(e=> (e.totalBurn!=null && e.caloriesEaten!=null) ? (e.totalBurn-e.caloriesEaten) : null).filter(v=>v!=null);
+  const defs=last7.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null).filter(v=>v!=null);
   const avgDef = defs.length ? Math.round(defs.reduce((a,b)=>a+b,0)/defs.length) : null;
 
   const ws=last7.map(e=>e.weight_kg).filter(v=>v!=null);
   const wtTrend = ws.length>=2 ? (ws[ws.length-1]-ws[0]) : null;
 
-  const den = last7.filter(e=>e.targetCalories!=null).length || 0;
+  const den = last7.filter(e=>entryTargets(e).target!=null).length || 0;
   let adh=null;
   if(den){
     const hits=last7.filter(e=>{
@@ -557,9 +823,10 @@ function drawWeight(c, entries){
 }
 
 function drawDef(c, entries){
+  const tdee=calcTDEE(loadProfile());
   const g=clearCanvas(c), w=c.width, h=c.height;
   drawAxes(g,w,h);
-  const vals=entries.map(e=> (e.totalBurn!=null && e.caloriesEaten!=null) ? (e.totalBurn-e.caloriesEaten) : null);
+  const vals=entries.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null);
   const valid=vals.filter(v=>v!=null);
   if(!valid.length){ drawEmpty(c,"Enter TDEE + Intake"); return; }
   const max=Math.max(...valid,0), min=Math.min(...valid,0);
@@ -570,7 +837,971 @@ function drawDef(c, entries){
   g.strokeStyle="rgba(31,42,64,.9)"; g.beginPath(); g.moveTo(x0,yZero); g.lineTo(x1,yZero); g.stroke();
   const bw=(x1-x0)/(entries.length)*0.65;
   entries.forEach((e,i)=>{
-    const v=(e.totalBurn!=null && e.caloriesEaten!=null)?(e.totalBurn-e.caloriesEaten):null;
+    const v=(effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null)?(effectiveBurn(e,tdee)-e.caloriesEaten):null;
+    if(v==null) return;
+    const x=x0+(x1-x0)*(i/(entries.length-1));
+    const y=y1-(y1-y0)*((v-lo)/(hi-lo));
+    const top=Math.min(y,yZero), hh=Math.abs(yZero-y);
+    g.fillStyle=v>=0?"rgba(42,211,125,.8)":"rgba(255,91,91,.8)";
+    g.fillRect(x-bw/2, top, bw, hh);
+  });
+}
+
+function drawPie(c, e){
+  const g=clearCanvas(c), w=c.width, h=c.height;
+  if(!e || (e.protein_g==null && e.carbs_g==null && e.fat_g==null)){ drawEmpty(c,"Log macros to see pie chart"); return; }
+  const P=Number(e.protein_g||0), C=Number(e.carbs_g||0), F=Number(e.fat_g||0);
+  const pCal=P*4, cCal=C*4, fCal=F*9;
+  const total=pCal+cCal+fCal;
+  if(total<=0){ drawEmpty(c,"Macros are zero"); return; }
+  const cx=w/2, cy=h/2+6, r=Math.min(w,h)*0.28;
+  let a=-Math.PI/2;
+  const slices=[
+    {val:pCal,col:"rgba(74,163,255,.9)"},
+    {val:cCal,col:"rgba(255,198,110,.9)"},
+    {val:fCal,col:"rgba(42,211,125,.9)"}
+  ];
+  slices.forEach(s=>{
+    const ang=(s.val/total)*Math.PI*2;
+    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,r,a,a+ang); g.closePath();
+    g.fillStyle=s.col; g.fill(); a+=ang;
+  });
+  g.beginPath(); g.arc(cx,cy,r*0.62,0,Math.PI*2); g.fillStyle="rgba(0,0,0,.18)"; g.fill();
+}
+
+/* Export/Import */
+function exportJSON(){
+  const data={settings:loadSettings(), days:loadDays(), exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function exportCSV(){
+  const days=loadDays();
+  if(!days.length){alert("No data");return;}
+  const cols=["date","mode","training","recovery","targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm","notes"];
+  const lines=[cols.join(",")].concat(days.map(r=>cols.map(c=>{
+    const s=String(r[c]??"").replace(/"/g,'""');
+    return `"${s}"`;
+  }).join(",")));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+function importFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const txt=String(reader.result||"");
+    const name=(file.name||"").toLowerCase();
+    if(name.endsWith(".json")){
+      try{
+        const obj=JSON.parse(txt);
+        const days=Array.isArray(obj.days)?obj.days:(Array.isArray(obj)?obj:[]);
+        if(obj.settings) saveSettings(obj.settings);
+        if(days.length) saveDays(days);
+        ensureMonthSeed(); renderAll(); alert("Import complete (JSON)");
+      }catch(e){ alert("Invalid JSON"); }
+      return;
+    }
+    if(name.endsWith(".csv")){
+      const lines=txt.split(/\r?\n/).filter(Boolean);
+      if(lines.length<2){alert("Empty CSV");return;}
+      const head=lines.shift().split(",").map(s=>s.replace(/^"|"$/g,""));
+      const out=lines.map(l=>{
+        const cells=l.match(/("([^"]|"")*"|[^,]*)/g).map(x=>x.replace(/^,?/,"").replace(/^"|"$/g,"").replace(/""/g,'"'));
+        const o={}; head.forEach((h,i)=>o[h]=cells[i]??"");
+        ["targetCalories","caloriesEaten","totalBurn","protein_g","carbs_g","fat_g","weight_kg","waist_cm"].forEach(k=>{
+          if(o[k]==="") o[k]=null; else {const n=Number(o[k]); o[k]=Number.isFinite(n)?n:o[k];}
+        });
+        return o;
+      });
+      saveDays(out);
+      ensureMonthSeed(); renderAll(); alert("Import complete (CSV)");
+      return;
+    }
+    alert("Unsupported file type");
+  };
+  reader.readAsText(file);
+}
+function monthlySnapshot(){
+  const days=loadDays();
+  const key=`${view.y}-${String(view.m+1).padStart(2,'0')}`;
+  const month=days.filter(d=>d.date?.startsWith(key));
+  const ts=new Date().toISOString().replace(/[:.]/g,"-");
+  const blob=new Blob([JSON.stringify({month:key,days:month,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`snapshot_${key}_${ts}.json`;
+  a.click();
+}
+
+/* Wiring */
+$id("prevBtn").onclick=()=>{ view.m--; if(view.m<0){view.m=11;view.y--;} ensureMonthSeed(); renderAll(); };
+$id("nextBtn").onclick=()=>{ view.m++; if(view.m>11){view.m=0;view.y++;} ensureMonthSeed(); renderAll(); };
+$id("todayBtn").onclick=()=>{ const d=new Date(); view={y:d.getFullYear(),m:d.getMonth()}; ensureMonthSeed(); renderAll(); };
+$id("exportJsonBtn").onclick=exportJSON;
+$id("exportCsvBtn").onclick=exportCSV;
+$id("importBtn").onclick=()=> $id("filePick").click();
+$id("filePick").addEventListener("change",(e)=>{ const f=e.target.files?.[0]; if(f) importFile(f); e.target.value=""; });
+$id("snapshotBtn").onclick=monthlySnapshot;
+$id("resetBtn").onclick=()=>{ if(!confirm("Reset local data?")) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETTINGS_KEY); ensureMonthSeed(); renderAll(); };
+
+$id("closeBtn").onclick=closeDay;
+$id("saveBtn").onclick=saveDay;
+$id("backdrop").addEventListener("click",(e)=>{ if(e.target.id==="backdrop") closeDay(); });
+$id("fMode").addEventListener("change", upTargetPreview);
+$id("fTrain").addEventListener("change", upTargetPreview);
+
+ensureMonthSeed();
+renderAll();
+function renderAll(){ renderModes(); renderCalendar(); computeKPIs(); }
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Body Composition Control Dashboard</title>
+<style>
+:root{
+  --bg:#070b12;
+  --text:#eaf0ff;
+  --muted:#9fb0cc;
+  --line:#1f2a40;
+  --accent:#4aa3ff;
+  --good:#2ad37d;
+  --warn:#ffc66e;
+  --bad:#ff5b5b;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+  background: radial-gradient(1200px 700px at 20% 0%, #0e1730, var(--bg));
+  color:var(--text);
+}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;background:linear-gradient(180deg, rgba(7,11,18,.92), rgba(7,11,18,.70));
+  backdrop-filter: blur(10px);
+  padding:12px 0; z-index:5;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#4aa3ff,#2ad37d);box-shadow:var(--shadow)}
+.brand h1{font-size:16px;margin:0}
+.brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.btn{
+  appearance:none;border:1px solid var(--line);background:rgba(16,26,45,.8);
+  color:var(--text);padding:8px 10px;border-radius:12px;cursor:pointer;
+  font-size:12px; line-height:1; display:inline-flex; align-items:center; gap:8px;
+}
+.btn:hover{border-color:#2d3d5f}
+.btn.primary{background:linear-gradient(135deg,#4aa3ff,#2ad37d);border-color:transparent}
+.btn.danger{background:linear-gradient(135deg,#ff5b5b,#ff9191);border-color:transparent}
+.btn.ghost{background:transparent}
+.pill{
+  padding:7px 10px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(0,0,0,.25); font-size:12px; color:var(--muted);
+}
+.modes{display:flex;gap:6px;align-items:center}
+.mode{
+  padding:8px 10px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(0,0,0,.25); font-size:12px; cursor:pointer; user-select:none;
+  opacity:.7;
+}
+.mode.active{opacity:1;border-color:var(--accent); box-shadow: 0 0 0 2px rgba(74,163,255,.15) inset}
+.grid{display:grid;grid-template-columns: 1.4fr .9fr; gap:14px; margin-top:12px}
+@media(max-width:980px){.grid{grid-template-columns:1fr}}
+.card{
+  border:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+  border-radius:18px; padding:14px; box-shadow:var(--shadow);
+}
+.card h2{margin:0 0 10px 0;font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{border:1px solid var(--line);background:rgba(0,0,0,.22);border-radius:14px;padding:10px}
+.kpi .l{font-size:11px;color:var(--muted)}
+.kpi .v{font-size:16px;font-weight:700;margin-top:4px}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:980px){.split{grid-template-columns:1fr}}
+.calendar{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:8px;
+}
+.dow{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.day{
+  min-height:92px;border:1px solid var(--line);border-radius:14px;padding:8px;
+  background:rgba(0,0,0,.22); cursor:pointer; position:relative; overflow:hidden;
+}
+.day:hover{border-color:#2d3d5f}
+.day .num{font-size:11px;color:var(--muted)}
+.badge{display:inline-block;margin-top:8px;font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(16,26,45,.6)}
+.badge.good{border-color:rgba(42,211,125,.5);color:#bff7da}
+.badge.warn{border-color:rgba(255,198,110,.5);color:#ffe2b3}
+.badge.bad{border-color:rgba(255,91,91,.5);color:#ffd0d0}
+.day .mini{font-size:10px;color:var(--muted);margin-top:6px}
+.day .dot{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%}
+.dot.g{background:var(--good)} .dot.y{background:var(--warn)} .dot.r{background:var(--bad)}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.small{font-size:12px;color:var(--muted)}
+canvas{width:100%;height:220px;display:block;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.22)}
+.footer{margin-top:10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  display:none;align-items:center;justify-content:center;z-index:20;
+}
+.modal{
+  width:min(980px,calc(100vw - 24px));
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(16,26,45,.98), rgba(7,11,18,.98));
+  box-shadow:var(--shadow);
+  padding:14px;
+}
+.modalTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modalTop h3{margin:0;font-size:14px}
+.form{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px
+}
+@media(max-width:980px){.form{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.form{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:11px;color:var(--muted)}
+.field input,.field select,.field textarea{
+  background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--text);
+  border-radius:12px;padding:10px;font-size:12px;outline:none;
+}
+.field textarea{min-height:90px;resize:vertical}
+.hint{font-size:11px;color:var(--muted)}
+.lock{font-size:11px;color:var(--muted);border:1px dashed var(--line);padding:8px;border-radius:12px;background:rgba(0,0,0,.18)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Body Composition Control</h1>
+        <div class="sub">Fat loss · Weight loss · Weight gain — single dashboard</div>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="modes" id="modes"></div>
+      <span class="pill" id="monthLabel">—</span>
+      <button class="btn" id="prevBtn">◀</button>
+      <button class="btn" id="nextBtn">▶</button>
+      <button class="btn" id="todayBtn">Today</button>
+      <button class="btn" id="profileBtn">Profile</button>
+      <button class="btn" id="exportJsonBtn">Export JSON</button>
+      <button class="btn" id="exportCsvBtn">Export CSV</button>
+      <button class="btn" id="importBtn">Import</button>
+      <button class="btn" id="snapshotBtn">Monthly Snapshot</button>
+      <button class="btn danger" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>This Month</h2>
+      <div class="calendar" id="dow"></div>
+      <div style="height:8px"></div>
+      <div class="calendar" id="cal"></div>
+      <div class="footer">
+        <div>Click any day to edit. Data saves automatically (local).</div>
+        <div><span class="small">Pro features (Drive sync, payments) are placeholders.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dashboard</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Avg deficit / surplus (7d)</div><div class="v" id="kDef">—</div><div class="s" id="kDefS">—</div></div>
+        <div class="kpi"><div class="l">Weight trend (7d)</div><div class="v" id="kWt">—</div><div class="s" id="kWtS">—</div></div>
+        <div class="kpi"><div class="l">Adherence (7d)</div><div class="v" id="kAdh">—</div><div class="s" id="kAdhS">—</div></div>
+      </div>
+      <hr/>
+      <div class="split">
+        <div>
+          <div class="small">Weight trend (last 14 entries)</div>
+          <canvas id="cWeight" width="800" height="240"></canvas>
+        </div>
+        <div>
+          <div class="small">Deficit / surplus (last 14 entries)</div>
+          <canvas id="cDef" width="800" height="240"></canvas>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="split">
+        <div>
+          <div class="small">Macros (today / last entry)</div>
+          <canvas id="cPie" width="800" height="240"></canvas>
+        </div>
+        <div class="lock">
+          <strong>NO‑THINK RULE CARD</strong><br/><br/>
+          1) Pick Mode: Fat loss / Weight loss / Weight gain<br/>
+          2) Log: Calories eaten + Total burn (TDEE) + Weight (morning)<br/>
+          3) The only math that matters: <strong>TDEE − Intake</strong><br/>
+          4) Adjust only if: 14 days flat + adherence ≥ 80%<br/>
+          5) Refeed trigger: 2+ low recoveries in a row OR performance tanks<br/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop">
+  <div class="modal">
+    <div class="modalTop">
+      <h3 id="modalTitle">Day</h3>
+      <div class="row">
+        <button class="btn" id="saveBtn">Save</button>
+        <button class="btn ghost" id="closeBtn">Close</button>
+      </div>
+    </div>
+    <div class="hint" id="modalHint">Targets auto-calc by mode + training type. Enter Total Burn if WHOOP calories are hidden.</div>
+    <div class="form">
+      <div class="field">
+        <label>Mode</label>
+        <select id="fMode">
+          <option value="fat_loss">Fat loss</option>
+          <option value="weight_loss">Weight loss</option>
+          <option value="weight_gain">Weight gain</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Training</label>
+        <select id="fTrain">
+          <option>Rest</option><option>Gym</option><option>Padel</option><option>Football</option>
+          <option>Walk</option><option>Swim</option><option>Gym + Padel</option><option>Gym + Football</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Recovery</label>
+        <select id="fRec">
+          <option value="">—</option>
+          <option value="g">Green</option>
+          <option value="y">Yellow</option>
+          <option value="r">Red</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Calories eaten</label>
+        <input id="fEat" type="number" placeholder="e.g. 2450" />
+      </div>
+      <div class="field">
+        <label>Total burn (TDEE)</label>
+        <input id="fBurn" type="number" placeholder="e.g. 3100" />
+      </div>
+      <div class="field">
+        <label>Target calories (auto)</label>
+        <input id="fTarget" type="number" disabled />
+      </div>
+
+      <div class="field">
+        <label>Protein (g)</label>
+        <input id="fP" type="number" placeholder="e.g. 200" />
+      </div>
+      <div class="field">
+        <label>Carbs (g)</label>
+        <input id="fC" type="number" placeholder="e.g. 220" />
+      </div>
+      <div class="field">
+        <label>Fat (g)</label>
+        <input id="fF" type="number" placeholder="e.g. 70" />
+      </div>
+
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input id="fW" type="number" step="0.1" placeholder="e.g. 99.8" />
+      </div>
+      <div class="field">
+        <label>Waist (cm)</label>
+        <input id="fWaist" type="number" step="0.1" placeholder="optional" />
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="fNotes" placeholder="sleep, hunger, performance..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="filePick" style="display:none" accept=".json,.csv,text/csv,application/json" />
+
+
+<!-- Profile Modal -->
+<div class="backdrop" id="profileBackdrop" style="display:none">
+  <div class="modal" style="max-width:820px">
+    <div class="mh">
+      <div>
+        <div class="mt">Profile (auto math)</div>
+        <div class="ms">Set once. Targets, deficit/surplus, and charts update automatically.</div>
+      </div>
+      <div class="mact">
+        <button class="btn primary" id="profileSaveBtn">Save</button>
+        <button class="btn" id="profileCloseBtn">×</button>
+      </div>
+    </div>
+    <div class="mb">
+      <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px">
+        <div class="kpi">
+          <div class="k">Sex</div>
+          <select id="pSex" class="inp">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="kpi">
+          <div class="k">Activity level (TDEE multiplier)</div>
+          <select id="pAct" class="inp">
+            <option value="1.2">Sedentary (1.2)</option>
+            <option value="1.375">Light (1.375)</option>
+            <option value="1.55" selected>Moderate (1.55)</option>
+            <option value="1.725">Very active (1.725)</option>
+            <option value="1.9">Athlete (1.9)</option>
+          </select>
+        </div>
+        <div class="kpi">
+          <div class="k">Age</div>
+          <input id="pAge" class="inp" type="number" min="10" max="99" step="1" placeholder="e.g., 24">
+        </div>
+        <div class="kpi">
+          <div class="k">Height (cm)</div>
+          <input id="pHeight" class="inp" type="number" min="120" max="230" step="1" placeholder="e.g., 178">
+        </div>
+        <div class="kpi">
+          <div class="k">Weight (kg)</div>
+          <input id="pWeight" class="inp" type="number" min="35" max="250" step="0.1" placeholder="e.g., 85.0">
+        </div>
+        <div class="kpi">
+          <div class="k">Current body fat % (optional)</div>
+          <input id="pBF" class="inp" type="number" min="3" max="60" step="0.1" placeholder="e.g., 18.5">
+        </div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Goals (used to auto-calc targets)</div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px">
+        <div class="kpi">
+          <div class="k">Fat loss goal BF% (optional)</div>
+          <input id="gBF" class="inp" type="number" min="5" max="35" step="0.1" placeholder="e.g., 12.0">
+          <div class="s">Used for display only.</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Weight loss rate (kg/week)</div>
+          <input id="gWL" class="inp" type="number" min="0" max="2" step="0.05" placeholder="e.g., 0.6">
+          <div class="s">Auto deficit = rate×7700/7.</div>
+        </div>
+        <div class="kpi">
+          <div class="k">Weight gain rate (kg/week)</div>
+          <input id="gWG" class="inp" type="number" min="0" max="1" step="0.05" placeholder="e.g., 0.25">
+          <div class="s">Auto surplus = rate×7700/7.</div>
+        </div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Preview (computed)</div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
+        <div class="kpi"><div class="k">BMR</div><div class="v" id="pvBmr">—</div></div>
+        <div class="kpi"><div class="k">TDEE</div><div class="v" id="pvTdee">—</div></div>
+        <div class="kpi"><div class="k">Loss target</div><div class="v" id="pvLoss">—</div><div class="s">kcal/day</div></div>
+        <div class="kpi"><div class="k">Gain target</div><div class="v" id="pvGain">—</div><div class="s">kcal/day</div></div>
+      </div>
+
+      <div class="pill" style="margin-top:12px">
+        <div class="t">Notes</div>
+      </div>
+      <div class="muted" style="font-size:12px;line-height:1.5">
+        • If you enter <b>Total Burn</b> from WHOOP for a day, the deficit uses it. If blank, it uses your computed TDEE for that day.<br>
+        • Wearables are estimates. Weekly scale trend overrides day-to-day noise.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TARGETS = {
+  fat_loss: { label:"Fat loss", base:2500, rest:2300, hard:2700, protein:200, fat:70 },
+  weight_loss: { label:"Weight loss", base:2350, rest:2150, hard:2550, protein:200, fat:65 },
+  weight_gain: { label:"Weight gain", base:2900, rest:2750, hard:3100, protein:190, fat:85 }
+};
+const STORAGE_KEY = "bc_days_v1";
+const SETTINGS_KEY = "bc_settings_v1";
+
+const PROFILE_KEY = "bc_profile_v1";
+
+function defaultProfile(){
+  return {
+    sex:"male",
+    activity:1.55,
+    age:null,
+    height_cm:null,
+    weight_kg:null,
+    bodyfat:null,
+    goal_bf:null,
+    goal_loss_kgwk:0.6,
+    goal_gain_kgwk:0.25
+  };
+}
+function loadProfile(){
+  const raw = localStorage.getItem(PROFILE_KEY);
+  const p = raw ? Object.assign(defaultProfile(), JSON.parse(raw)) : defaultProfile();
+  // coerce
+  p.activity = Number(p.activity)||1.55;
+  return p;
+}
+function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+
+function calcBMR(p){
+  const w = safeNum(p.weight_kg), h = safeNum(p.height_cm), a = safeNum(p.age);
+  const bf = safeNum(p.bodyfat);
+  if(w && bf && bf>3 && bf<60){
+    const lean = w*(1-bf/100);
+    return 370 + 21.6*lean; // Katch-McArdle
+  }
+  if(!w || !h || !a) return null;
+  const s = (p.sex==="female") ? -161 : 5;
+  return 10*w + 6.25*h - 5*a + s; // Mifflin-St Jeor
+}
+function calcTDEE(p){
+  const bmr = calcBMR(p);
+  if(!bmr) return null;
+  const act = Number(p.activity)||1.55;
+  return bmr*act;
+}
+function kcalPerDayFromRate(kgPerWeek){
+  const r = safeNum(kgPerWeek);
+  if(!r || r<=0) return null;
+  return (r*7700)/7;
+}
+function computedTargets(mode, p){
+  const tdee = calcTDEE(p);
+  const lossK = kcalPerDayFromRate(p.goal_loss_kgwk) || 600;
+  const gainK = kcalPerDayFromRate(p.goal_gain_kgwk) || 250;
+  // mode mapping: fat_loss uses lossK, weight_loss uses 0.75*lossK, weight_gain uses gainK
+  let target = null;
+  if(tdee){
+    if(mode==="weight_gain") target = tdee + gainK;
+    else if(mode==="weight_loss") target = tdee - (lossK*0.75);
+    else target = tdee - lossK;
+  }
+  // macro targets (simple, sane defaults)
+  const w = safeNum(p.weight_kg);
+  const prot = w ? (mode==="weight_gain" ? Math.round(1.8*w) : Math.round(2.2*w)) : (TARGETS[mode]?.protein||200);
+  const fatg = w ? Math.round(0.8*w) : (TARGETS[mode]?.fat||70);
+  return {tdee, target: target? Math.round(target): null, protein: prot, fat: fatg};
+}
+
+const $id = (id)=>document.getElementById(id);
+const iso = (d)=> new Date(d).toISOString().slice(0,10);
+function safeNum(v){const n=Number(v); return Number.isFinite(n)?n:null;}
+
+let view = (()=>{ const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })();
+
+function loadSettings(){
+  const raw = localStorage.getItem(SETTINGS_KEY);
+  const s = raw? JSON.parse(raw): {mode:"fat_loss"};
+  if(!TARGETS[s.mode]) s.mode="fat_loss";
+  return s;
+}
+
+function normalizeArr(x){
+  if(Array.isArray(x)) return x;
+  if(!x) return [];
+  if(typeof x === "object") return Object.values(x);
+  return [];
+}
+
+function effectiveBurn(entry, tdee){
+  const b = safeNum(entry.totalBurn);
+  if(b) return b;
+  return tdee ? Math.round(tdee) : null;
+}
+
+function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+function loadDays(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  let d = raw ? JSON.parse(raw) : [];
+  if(!Array.isArray(d)) d = Object.values(d||{});
+  const map = new Map();
+  d.forEach(x=>{ if(x && x.date) map.set(x.date, x); });
+  return Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function saveDays(days){ localStorage.setItem(STORAGE_KEY, JSON.stringify(days)); }
+
+function deriveTarget(mode, training){
+  const t = TARGETS[mode] || TARGETS.fat_loss;
+  const p = loadProfile();
+  const comp = computedTargets(mode, p);
+  // Use computed base target when possible, otherwise fallback to hard-coded defaults.
+  const base = (comp && comp.target) ? comp.target : t.base;
+
+  // Keep your original day-type structure as offsets around the base.
+  const restDelta = (t.rest - t.base);
+  const hardDelta = (t.hard - t.base);
+
+  const tr = (training||"Rest").toLowerCase();
+  let target = base;
+  if(tr.includes("rest")) target = base + restDelta;
+  // "hard" days: football or gym+padel or gym+football etc.
+  if(tr.includes("football") || tr.includes("gym +") || (tr.includes("padel") && tr.includes("gym"))) target = base + hardDelta;
+
+  const protein = (comp && comp.protein) ? comp.protein : t.protein;
+  const fat = (comp && comp.fat) ? comp.fat : t.fat;
+  const carbs = Math.max(0, Math.round((target - protein*4 - fat*9)/4));
+  return {target, protein, fat, carbs};
+}
+
+function entryTargets(e){
+  const s = loadSettings();
+  const mode = e.mode || s.mode || "fat_loss";
+  const training = e.training || "Rest";
+  const der = deriveTarget(mode, training);
+  const t = (e.targetLocked ? (safeNum(e.targetCalories) ?? der.target) : der.target);
+  return {mode, training, target:t, protein:der.protein, fat:der.fat, carbs:der.carbs};
+}
+
+
+function ensureMonthSeed(){
+  const days = loadDays();
+  const last = new Date(view.y, view.m+1, 0).getDate();
+  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
+  const have = new Set(days.filter(x=>x.date?.startsWith(monthKey)).map(x=>x.date));
+  const s = loadSettings();
+  let changed=false;
+  for(let d=1; d<=last; d++){
+    const dt = iso(new Date(view.y, view.m, d));
+    if(!have.has(dt)){
+      const der = deriveTarget(s.mode,"Rest");
+      days.push({
+        date:dt, mode:s.mode, training:"Rest", recovery:"",
+        caloriesEaten:null, totalBurn:null,
+        targetCalories:der.target,
+        protein_g:der.protein, carbs_g:null, fat_g:der.fat,
+        weight_kg:null, waist_cm:null, notes:""
+      });
+      changed=true;
+    }
+  }
+  if(changed) saveDays(days);
+}
+
+function renderModes(){
+  const s=loadSettings();
+  const modesEl=$id("modes");
+  modesEl.innerHTML="";
+  Object.keys(TARGETS).forEach(k=>{
+    const b=document.createElement("div");
+    b.className="mode"+(s.mode===k?" active":"");
+    b.textContent=TARGETS[k].label;
+    b.onclick=()=>{
+      s.mode=k; saveSettings(s);
+      const days=loadDays();
+      const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
+      days.forEach(e=>{
+        if(e.date?.startsWith(monthKey)){
+          if(!e.mode) e.mode=k;
+          const der = deriveTarget(e.mode||k, e.training||"Rest");
+          e.targetCalories = der.target;
+          if(e.protein_g==null) e.protein_g = der.protein;
+          if(e.fat_g==null) e.fat_g = der.fat;
+          if(e.carbs_g==null) e.carbs_g = der.carbs;
+        }
+      });
+      saveDays(days);
+      
+// Profile modal wiring
+function openProfile(){
+  const p = loadProfile();
+  $id("pSex").value = p.sex || "male";
+  $id("pAct").value = String(p.activity||1.55);
+  $id("pAge").value = p.age ?? "";
+  $id("pHeight").value = p.height_cm ?? "";
+  $id("pWeight").value = p.weight_kg ?? "";
+  $id("pBF").value = p.bodyfat ?? "";
+  $id("gBF").value = p.goal_bf ?? "";
+  $id("gWL").value = p.goal_loss_kgwk ?? 0.6;
+  $id("gWG").value = p.goal_gain_kgwk ?? 0.25;
+  $id("profileBackdrop").style.display="flex";
+  updateProfilePreview();
+}
+function closeProfile(){ $id("profileBackdrop").style.display="none"; }
+function readProfileFromUI(){
+  return {
+    sex: $id("pSex").value,
+    activity: Number($id("pAct").value)||1.55,
+    age: safeNum($id("pAge").value),
+    height_cm: safeNum($id("pHeight").value),
+    weight_kg: safeNum($id("pWeight").value),
+    bodyfat: safeNum($id("pBF").value),
+    goal_bf: safeNum($id("gBF").value),
+    goal_loss_kgwk: safeNum($id("gWL").value) || 0.6,
+    goal_gain_kgwk: safeNum($id("gWG").value) || 0.25
+  };
+}
+function updateProfilePreview(){
+  const p = readProfileFromUI();
+  const bmr = calcBMR(p);
+  const tdee = calcTDEE(p);
+  const loss = computedTargets("fat_loss", p).target;
+  const gain = computedTargets("weight_gain", p).target;
+  $id("pvBmr").textContent = bmr ? Math.round(bmr)+" kcal" : "—";
+  $id("pvTdee").textContent = tdee ? Math.round(tdee)+" kcal" : "—";
+  $id("pvLoss").textContent = loss ? loss : "—";
+  $id("pvGain").textContent = gain ? gain : "—";
+}
+function saveProfileFromUI(){
+  const p = readProfileFromUI();
+  // minimal validation: if any are set, require the core set for Mifflin; BF route only needs weight.
+  const hasAny = Object.values(p).some(v=>v!==null && v!=="" && v!==undefined);
+  if(hasAny){
+    const bmr = calcBMR(p);
+    if(!bmr){
+      alert("Profile incomplete. Enter at least Weight + Bodyfat% OR Weight + Height + Age.");
+      return;
+    }
+  }
+  saveProfile(p);
+  closeProfile();
+  renderAll();
+}
+
+["pSex","pAct","pAge","pHeight","pWeight","pBF","gBF","gWL","gWG"].forEach(id=>{
+  const el = $id(id); if(el) el.addEventListener("input", updateProfilePreview);
+});
+
+$id("profileBtn").onclick=openProfile;
+$id("profileCloseBtn").onclick=closeProfile;
+$id("profileSaveBtn").onclick=saveProfileFromUI;
+$id("profileBackdrop").addEventListener("click",(e)=>{ if(e.target.id==="profileBackdrop") closeProfile(); });
+
+ensureMonthSeed();
+      renderAll();
+    };
+    modesEl.appendChild(b);
+  });
+}
+
+function renderCalendar(){
+  $id("monthLabel").textContent = new Date(view.y, view.m, 1).toLocaleString(undefined, {month:"long", year:"numeric"});
+  const dow = $id("dow"); dow.innerHTML="";
+  ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(x=>{
+    const d=document.createElement("div"); d.className="dow"; d.textContent=x; dow.appendChild(d);
+  });
+  const cal = $id("cal"); cal.innerHTML="";
+  const first = new Date(view.y, view.m, 1);
+  let start = first.getDay(); start = (start===0)?6:(start-1);
+  for(let i=0;i<start;i++){ const b=document.createElement("div"); b.className="day"; b.style.visibility="hidden"; cal.appendChild(b); }
+  const days = loadDays();
+  const monthKey = `${view.y}-${String(view.m+1).padStart(2,'0')}`;
+  const map = new Map(days.filter(d=>d.date?.startsWith(monthKey)).map(d=>[d.date,d]));
+  const last = new Date(view.y, view.m+1, 0).getDate();
+  for(let d=1; d<=last; d++){
+    const ds = iso(new Date(view.y, view.m, d));
+    const e = map.get(ds) || {date:ds, mode:loadSettings().mode, training:"Rest"};
+    const der = deriveTarget(e.mode||loadSettings().mode, e.training||"Rest");
+    const target = e.targetCalories ?? der.target;
+
+    const el=document.createElement("div");
+    el.className="day";
+    el.onclick=()=>openDay(ds);
+    el.innerHTML = `<div class="num">${d}</div>`;
+    if(e.recovery==="g"||e.recovery==="y"||e.recovery==="r"){
+      const dot=document.createElement("div"); dot.className="dot "+e.recovery; el.appendChild(dot);
+    }
+    let badgeClass="";
+    if(e.caloriesEaten!=null && target!=null){
+      const diff = Math.abs(Number(e.caloriesEaten)-Number(target));
+      badgeClass = diff<=100 ? "good" : (diff<=250 ? "warn" : "bad");
+    }
+    const b=document.createElement("div"); b.className="badge "+badgeClass; b.textContent=`Target ${target}`; el.appendChild(b);
+    const mini=document.createElement("div"); mini.className="mini";
+    mini.textContent=`${(e.training||"Rest")} · ${(e.weight_kg!=null?e.weight_kg+"kg":"—")} · ${(e.caloriesEaten!=null?e.caloriesEaten+"kcal":"—")}`;
+    el.appendChild(mini);
+    cal.appendChild(el);
+  }
+}
+
+/* Modal */
+let activeDate=null;
+function openDay(dateStr){
+  activeDate=dateStr;
+  const days=loadDays();
+  const e=days.find(x=>x.date===dateStr) || null;
+  const s=loadSettings();
+  const mode=e?.mode || s.mode;
+  $id("modalTitle").textContent=`Edit: ${dateStr}`;
+  $id("fMode").value=mode;
+  $id("fTrain").value=e?.training || "Rest";
+  $id("fRec").value=e?.recovery || "";
+  $id("fEat").value=e?.caloriesEaten ?? "";
+  $id("fBurn").value=e?.totalBurn ?? "";
+  const der=deriveTarget(mode, e?.training||"Rest");
+  $id("fTarget").value=e?.targetCalories ?? der.target;
+  $id("fP").value=e?.protein_g ?? der.protein;
+  $id("fF").value=e?.fat_g ?? der.fat;
+  $id("fC").value=e?.carbs_g ?? der.carbs;
+  $id("fW").value=e?.weight_kg ?? "";
+  $id("fWaist").value=e?.waist_cm ?? "";
+  $id("fNotes").value=e?.notes ?? "";
+  $id("backdrop").style.display="flex";
+}
+function closeDay(){ $id("backdrop").style.display="none"; activeDate=null; }
+function upTargetPreview(){
+  const mode=$id("fMode").value;
+  const tr=$id("fTrain").value;
+  const der=deriveTarget(mode,tr);
+  $id("fTarget").value=der.target;
+}
+function saveDay(){
+  if(!activeDate) return;
+  const days=loadDays();
+  let e=days.find(x=>x.date===activeDate);
+  if(!e){ e={date:activeDate}; days.push(e); }
+  e.mode=$id("fMode").value;
+  e.training=$id("fTrain").value;
+  e.recovery=$id("fRec").value || "";
+  const der=deriveTarget(e.mode,e.training);
+  const autoT = entryTargets(e).target;
+  const manualT = safeNum($id("fTarget").value);
+  e.targetLocked = (manualT!=null && manualT!==autoT);
+  e.targetCalories = (manualT!=null ? manualT : autoT);
+  e.caloriesEaten = safeNum($id("fEat").value);
+  e.totalBurn = safeNum($id("fBurn").value);
+  e.protein_g = safeNum($id("fP").value) ?? der.protein;
+  e.carbs_g = safeNum($id("fC").value) ?? der.carbs;
+  e.fat_g = safeNum($id("fF").value) ?? der.fat;
+  e.weight_kg = safeNum($id("fW").value);
+  e.waist_cm = safeNum($id("fWaist").value);
+  e.notes = ($id("fNotes").value||"").slice(0,2000);
+  saveDays(days);
+  closeDay();
+  renderAll();
+}
+
+/* KPIs + Charts */
+function ctx2d(c){ return c.getContext("2d"); }
+function clearCanvas(c){
+  const g=ctx2d(c);
+  g.clearRect(0,0,c.width,c.height);
+  g.fillStyle="rgba(0,0,0,.12)"; g.fillRect(0,0,c.width,c.height);
+  return g;
+}
+function drawEmpty(c, text){
+  const g=clearCanvas(c);
+  g.fillStyle="rgba(159,176,204,.85)";
+  g.font="14px system-ui";
+  g.fillText(text, 16, 28);
+}
+function drawAxes(g,w,h){
+  g.strokeStyle="rgba(31,42,64,.9)";
+  g.beginPath(); g.moveTo(50,16); g.lineTo(50,h-34); g.lineTo(w-16,h-34); g.stroke();
+}
+function getRecent(n=14){
+  const d=loadDays().filter(e=>e.weight_kg!=null || e.caloriesEaten!=null || e.totalBurn!=null);
+  return d.slice(-n);
+}
+function setKpi(id,v,s){ $id(id).textContent=v; $id(id+"S").textContent=s||""; }
+
+function computeKPIs(){
+  const entries=getRecent(30);
+  const tdee = calcTDEE(loadProfile());
+  if(!entries.length){
+    setKpi("kDef","—","Log at least 1 day");
+    setKpi("kWt","—","");
+    setKpi("kAdh","—","");
+    drawEmpty($id("cWeight"),"No data");
+    drawEmpty($id("cDef"),"No data");
+    drawEmpty($id("cPie"),"No data");
+    return;
+  }
+  const last7=entries.slice(-7);
+  const defs=last7.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null).filter(v=>v!=null);
+  const avgDef = defs.length ? Math.round(defs.reduce((a,b)=>a+b,0)/defs.length) : null;
+
+  const ws=last7.map(e=>e.weight_kg).filter(v=>v!=null);
+  const wtTrend = ws.length>=2 ? (ws[ws.length-1]-ws[0]) : null;
+
+  const den = last7.filter(e=>entryTargets(e).target!=null).length || 0;
+  let adh=null;
+  if(den){
+    const hits=last7.filter(e=>{
+      if(e.targetCalories==null || e.caloriesEaten==null) return false;
+      const tP = (TARGETS[e.mode||"fat_loss"]?.protein ?? 200) - 10;
+      return Math.abs(e.caloriesEaten-e.targetCalories)<=100 && (e.protein_g==null || e.protein_g>=tP);
+    }).length;
+    adh=Math.round(100*hits/den);
+  }
+
+  const last2=last7.slice(-2);
+  const lowRec = last2.length===2 && last2.every(e=>e.recovery==="r"||e.recovery==="y");
+  const suggestRefeed = lowRec && avgDef!=null && avgDef>500;
+
+  setKpi("kDef", avgDef==null?"—":`${avgDef} kcal`, suggestRefeed?"Refeed suggested (low recovery)":"Avg daily deficit/surplus");
+  setKpi("kWt", wtTrend==null?"—":`${wtTrend.toFixed(1)} kg`, "7‑day change");
+  setKpi("kAdh", adh==null?"—":`${adh}%`, "Within ±100 kcal target");
+
+  drawWeight($id("cWeight"), entries.slice(-14));
+  drawDef($id("cDef"), entries.slice(-14));
+  drawPie($id("cPie"), entries[entries.length-1]);
+}
+
+function drawWeight(c, entries){
+  const g=clearCanvas(c), w=c.width, h=c.height;
+  drawAxes(g,w,h);
+  const pts=entries.map((e,i)=>({i,v:e.weight_kg})).filter(p=>p.v!=null);
+  if(pts.length<2){ drawEmpty(c,"Need 2+ weight entries"); return; }
+  const vals=pts.map(p=>p.v);
+  const min=Math.min(...vals), max=Math.max(...vals);
+  const pad=(max-min)*0.15 || 1;
+  const lo=min-pad, hi=max+pad;
+  const x0=50,x1=w-16,y0=16,y1=h-34;
+  g.strokeStyle="rgba(74,163,255,.9)"; g.lineWidth=2;
+  g.beginPath();
+  pts.forEach((p,idx)=>{
+    const x=x0+(x1-x0)*(p.i/(entries.length-1));
+    const y=y1-(y1-y0)*((p.v-lo)/(hi-lo));
+    if(idx===0) g.moveTo(x,y); else g.lineTo(x,y);
+  });
+  g.stroke();
+}
+
+function drawDef(c, entries){
+  const tdee=calcTDEE(loadProfile());
+  const g=clearCanvas(c), w=c.width, h=c.height;
+  drawAxes(g,w,h);
+  const vals=entries.map(e=> (effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null) ? (effectiveBurn(e,tdee)-e.caloriesEaten) : null);
+  const valid=vals.filter(v=>v!=null);
+  if(!valid.length){ drawEmpty(c,"Enter TDEE + Intake"); return; }
+  const max=Math.max(...valid,0), min=Math.min(...valid,0);
+  const pad=(max-min)*0.15 || 100;
+  const lo=min-pad, hi=max+pad;
+  const x0=50,x1=w-16,y0=16,y1=h-34;
+  const yZero=y1-(y1-y0)*((0-lo)/(hi-lo));
+  g.strokeStyle="rgba(31,42,64,.9)"; g.beginPath(); g.moveTo(x0,yZero); g.lineTo(x1,yZero); g.stroke();
+  const bw=(x1-x0)/(entries.length)*0.65;
+  entries.forEach((e,i)=>{
+    const v=(effectiveBurn(e,tdee)!=null && e.caloriesEaten!=null)?(effectiveBurn(e,tdee)-e.caloriesEaten):null;
     if(v==null) return;
     const x=x0+(x1-x0)*(i/(entries.length-1));
     const y=y1-(y1-y0)*((v-lo)/(hi-lo));
