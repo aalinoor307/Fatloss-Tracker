@@ -8,7 +8,656 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
 <script src="https://accounts.google.com/gsi/client"></script>
-…<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<style>
+:root {
+  --bg: #05070a;
+  --panel: rgba(15, 22, 36, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --accent: #4aa3ff;
+  --accent-glow: rgba(74, 163, 255, 0.3);
+  --text: #f0f4f8;
+  --muted: #8a99af;
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #ef4444;
+  --line: rgba(255,255,255,0.06);
+  --glass: blur(12px);
+}
+
+* { box-sizing: border-box; transition: all 0.15s ease; }
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(74, 163, 255, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(52, 211, 153, 0.08) 0px, transparent 50%);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.4;
+}
+
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+/* Header & Mode Selector */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.brand h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+.brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+
+.mode-pills { display: flex; gap: 8px; }
+.pill {
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.pill.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+/* Tool Belt */
+.tools {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Dashboard Grid */
+.main-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+  align-items: start; 
+}
+@media (max-width: 1100px) { .main-row { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--panel);
+  backdrop-filter: var(--glass);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.card-hd {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-hd h2 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.card-bd { padding: 20px; }
+
+/* KPI Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: rgba(0,0,0,0.2);
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+.kpi.highlight { border-color: var(--accent); }
+.kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px; }
+.kpi-val { font-size: 20px; font-weight: 800; }
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* Calendar */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.dow { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 8px; font-weight: 700; text-transform: uppercase; }
+.day {
+  min-height: 95px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  cursor: pointer;
+  position: relative;
+}
+.day:hover { border-color: var(--accent); background: rgba(74, 163, 255, 0.05); }
+.day.today { border: 2px solid var(--accent); }
+.day-n { font-size: 12px; font-weight: 800; opacity: 0.4; }
+.day-meta { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  width: fit-content;
+}
+.badge.res { color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+/* Charts & Sidebar */
+.charts-grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 12px; 
+  margin-top: 12px; 
+}
+.chart-box { 
+  background: rgba(0,0,0,0.2); 
+  padding: 12px; 
+  border-radius: 16px; 
+  border: 1px solid var(--line);
+  height: 220px; 
+  display: flex;
+  flex-direction: column;
+}
+.chart-title { font-size: 11px; color: var(--muted); margin-bottom: 8px; flex-shrink: 0; }
+.chart-box canvas { flex-grow: 1; max-height: 170px; }
+
+.rule-card {
+  background: linear-gradient(135deg, rgba(74, 163, 255, 0.1), rgba(52, 211, 153, 0.05));
+  border: 1px dashed rgba(74, 163, 255, 0.3);
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 220px; 
+}
+
+/* Alert UI */
+.alert-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  margin-bottom: 20px;
+  display: none;
+  font-weight: 600;
+}
+
+/* Table Stylings */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th { font-size: 10px; text-transform: uppercase; color: var(--muted); text-align: left; padding: 12px; border-bottom: 1px solid var(--line); }
+td { padding: 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+
+/* Modals */
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  backdrop-filter: blur(8px);
+}
+.modal.active { display: flex; }
+.modal-cnt {
+  background: #0d1117;
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  width: 100%; max-width: 800px;
+  max-height: 90vh; overflow-y: auto;
+  padding: 24px;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+.field { margin-bottom: 16px; }
+label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
+input, select, textarea {
+  width: 100%; background: #161b22; border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 14px; color: white; outline: none; font-size: 14px;
+}
+input:focus { border-color: var(--accent); }
+
+.btn {
+  background: #21262d; border: 1px solid var(--line); color: white;
+  padding: 10px 18px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { background: #30363d; }
+.btn-pri { background: var(--accent); color: #000; border: none; }
+.btn-pri:hover { background: #60b0ff; }
+
+/* Sync State */
+.sync-status { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--muted); }
+.dot-sync { width: 6px; height: 6px; border-radius: 50%; background: #555; }
+.dot-sync.on { background: var(--good); box-shadow: 0 0 5px var(--good); }
+
+.preview-box {
+  background: rgba(0,0,0,0.3);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  margin-top: 10px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="topbar">
+    <div class="brand">
+      <h1>BodyComp Apex</h1>
+      <div class="sync-status">
+        <div class="dot-sync" id="syncDot"></div>
+        <span id="syncStatus">G-Drive: Local Mode</span>
+      </div>
+    </div>
+    <div class="mode-pills" id="modeSelector">
+      <div class="pill active" data-mode="fatloss">Fat loss</div>
+      <div class="pill" data-mode="weightloss">Weight loss</div>
+      <div class="pill" data-mode="weightgain">Weight gain</div>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button class="btn" id="btnPrev">◀</button>
+    <button class="btn" id="btnNext">▶</button>
+    <div style="font-size: 14px; font-weight: 700; min-width: 140px; text-align: center;" id="monthLabel">--</div>
+    <button class="btn" id="btnToday">Today</button>
+    <button class="btn btn-pri" id="btnProfile">Profile</button>
+    <button class="btn" id="btnSync">Link Drive</button>
+    <button class="btn" id="btnExport">Export</button>
+    <button class="btn" style="color:var(--bad)" id="btnReset">Reset</button>
+  </div>
+
+  <div id="metabolicAlert" class="alert-banner">◈ METABOLIC FLOOR ALERT: Adaptation detected. Recommend Diet Break.</div>
+
+  <div class="main-row">
+    <!-- LEFT: CALENDAR -->
+    <div class="card">
+      <div class="card-hd">
+        <h2>Cycle Management</h2>
+        <span id="targetHeader" style="font-size: 11px; color: var(--muted);">Target: --</span>
+      </div>
+      <div class="card-bd">
+        <div class="calendar-grid">
+           <div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div>
+           <div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div><div class="dow">Sun</div>
+        </div>
+        <div class="calendar-grid" id="cal"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: DASHBOARD -->
+    <div class="card">
+      <div class="card-hd">
+        <h2>Metabolic Intelligence</h2>
+        <span id="integrityLabel" style="font-size: 11px; color: var(--accent);">Integrity: --</span>
+      </div>
+      <div class="card-bd">
+        <div class="kpi-grid">
+          <div class="kpi highlight">
+            <span class="kpi-label">Dynamic TDEE</span>
+            <div class="kpi-val" id="valDynamicTDEE">--</div>
+            <div class="kpi-sub" id="subAdaptation">Actual Bio-Burn</div>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">CNS Status</span>
+            <div class="kpi-val" id="valCnsStatus">--</div>
+            <div class="kpi-sub" id="subCns">Strain vs Rec</div>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">Integrity Score</span>
+            <div class="kpi-val" id="valIntegrity">--</div>
+            <div class="kpi-sub">14-day consistency</div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-box">
+            <div class="chart-title">Weight Trend (14d)</div>
+            <canvas id="chartWeight"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-title">Metabolic Burn (14d)</div>
+            <canvas id="chartDeficit"></canvas>
+          </div>
+          <div class="chart-box">
+            <div class="chart-title">Macro Split (Last Entry)</div>
+            <canvas id="chartMacros"></canvas>
+          </div>
+          <div class="rule-card" id="noThinkCard">
+             <!-- JS Card -->
+          </div>
+        </div>
+        
+        <div id="aiCoach" class="rule-card" style="margin-top: 12px; background: rgba(74, 163, 255, 0.05); border-style: solid; min-height: auto;">
+          <strong>Apex Advisor:</strong> Awaiting sufficient data for profile analysis.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM: RECENT LOG -->
+  <div class="card">
+    <div class="card-hd">
+      <h2>Recent entries log</h2>
+      <span style="font-size: 11px; color: var(--muted);">Shows last 10 days</span>
+    </div>
+    <div class="card-bd" style="padding-top: 0;">
+      <div class="table-wrap">
+        <table id="recentEntriesTable">
+          <thead>
+            <tr>
+              <th>Date</th><th>Mode</th><th>Rec %</th><th>Strain</th><th>Eaten</th><th>Burn</th><th>Net</th><th>Weight</th><th>Protein</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="modalProfile">
+  <div class="modal-cnt">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+      <h2 style="margin:0; font-size: 18px;">Apex Biometric Configuration</h2>
+      <button class="btn" onclick="closeModal('modalProfile')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label>Sex</label><select id="pSex"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option></select></div>
+      <div class="field"><label>Age</label><input type="number" id="pAge" placeholder="29"></div>
+      <div class="field"><label>Height (cm)</label><input type="number" id="pHeight" placeholder="183"></div>
+      <div class="field"><label>Current Weight (kg)</label><input type="number" step="0.1" id="pWeight" placeholder="99.8"></div>
+      <div class="field"><label>Body Fat %</label><input type="number" step="0.1" id="pBf" placeholder="19.9"></div>
+      <div class="field"><label>Activity Level</label><select id="pAct"><option value="1.2">Sedentary</option><option value="1.375">Light</option><option value="1.55" selected>Moderate</option><option value="1.725">High</option><option value="1.9">Elite</option></select></div>
+      <div class="field"><label>Goal Weight (kg)</label><input type="number" step="0.1" id="pGoalW"></div>
+      <div class="field"><label>Goal Body Fat %</label><input type="number" step="0.1" id="pGoalBf"></div>
+    </div>
+    <div class="preview-box" id="profilePreview">Awaiting Biometrics...</div>
+    <button class="btn btn-pri" id="saveProfile" style="width:100%; margin-top:20px;">Save Command State</button>
+  </div>
+</div>
+
+<div class="modal" id="modalDay">
+  <div class="modal-cnt">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+      <h2 id="dayTitle">Edit Data Point</h2>
+      <button class="btn" onclick="closeModal('modalDay')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label>Weight (kg)</label><input type="number" step="0.1" id="fWeight"></div>
+      <div class="field"><label>Recovery % (Whoop)</label><input type="number" id="fRec"></div>
+      <div class="field"><label>Daily Strain (Whoop)</label><input type="number" step="0.1" id="fStrain"></div>
+      <div class="field"><label>Calories Eaten</label><input type="number" id="fEaten"></div>
+      <div class="field"><label>Total Burn / TDEE</label><input type="number" id="fBurn"></div>
+      <div class="field"><label>Protein (g)</label><input type="number" id="fProt"></div>
+      <div class="field"><label>Carbs (g)</label><input type="number" id="fCarbs"></div>
+      <div class="field"><label>Fat (g)</label><input type="number" id="fFat"></div>
+    </div>
+    <div class="field"><label>Internal Notes</label><textarea id="fNotes" rows="2"></textarea></div>
+    <button class="btn btn-pri" id="saveDay" style="width:100%;">Commit Data</button>
+  </div>
+</div>
+
+<script>
+/**
+ * BodyComp Apex - COMMAND CENTER v8.1
+ */
+const API_KEY = 'AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs';
+const CLIENT_ID = '41189729388-rksho3qtsot9qv7h2g4c0s8q81ghub6u.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+
+let gapiInited = false;
+let driveFileId = null;
+let charts = {};
+let tokenClient;
+
+let state = {
+  viewDate: new Date(),
+  mode: 'fatloss',
+  entries: {}, 
+  profile: { sex: '', age: null, height: null, weight: null, bf: null, act: 1.55, goalW: null, goalBf: null },
+  selectedDate: null,
+  syncActive: false
+};
+
+// --- Engines ---
+function calculateMetabolicIntelligence() {
+  const entriesArr = Object.values(state.entries).sort((a,b) => a.date.localeCompare(b.date));
+  const now = new Date();
+  const last14Days = entriesArr.filter(e => (now - new Date(e.date)) / 86400000 <= 14);
+  const integrity = Math.round((last14Days.length / 14) * 100);
+  const weights = last14Days.filter(e => e.weight);
+  const cals = last14Days.filter(e => e.eaten);
+  let dynamicTDEE = null;
+  if (weights.length >= 3 && cals.length >= 7) {
+    const wDelta = weights[weights.length - 1].weight - weights[0].weight;
+    const days = (new Date(weights[weights.length - 1].date) - new Date(weights[0].date)) / 86400000;
+    const avgCal = cals.reduce((a, b) => a + b.eaten, 0) / cals.length;
+    if (days > 0) dynamicTDEE = Math.round(avgCal - ((wDelta * 7700) / days));
+  }
+  return { integrity, dynamicTDEE };
+}
+
+function calculateMath(p, mode) {
+  if (!p.weight || !p.age || !p.sex) return null;
+  const intel = calculateMetabolicIntelligence();
+  let bmr = (10 * Number(p.weight)) + (6.25 * Number(p.height)) - (5 * Number(p.age)) + (p.sex === 'male' ? 5 : -161);
+  const baselineTdee = Math.round(bmr * Number(p.act));
+  const tdee = intel.dynamicTDEE || baselineTdee;
+  const deficit = mode === 'fatloss' ? Math.round(tdee * 0.2) : mode === 'weightloss' ? Math.round(tdee * 0.28) : -Math.round(tdee * 0.12);
+  return { tdee, baselineTdee, integrity: intel.integrity, isDynamic: !!intel.dynamicTDEE, bmr, target: tdee - deficit, protein: Math.round(p.weight * 2.2), label: mode, rate: ((deficit * 7)/7700).toFixed(2) };
+}
+
+// --- Google Auth ---
+function gapiLoaded() { gapi.load('client', async () => {
+  try { await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] }); gapiInited = true; } catch (e) {}
+});}
+function gisLoaded() { tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: '' }); }
+async function handleAuthClick() {
+  tokenClient.callback = async (resp) => {
+    if (resp.error) return;
+    state.syncActive = true;
+    document.getElementById('syncStatus').innerText = "Drive: Active";
+    document.getElementById('syncDot').classList.add('on');
+    await findOrCreateDriveFile();
+  };
+  tokenClient.requestAccessToken({prompt: 'consent'});
+}
+async function findOrCreateDriveFile() {
+  try {
+    const resp = await gapi.client.drive.files.list({ spaces: 'appDataFolder', fields: 'files(id, name)', pageSize: 1 });
+    if (resp.result.files.length > 0) {
+      driveFileId = resp.result.files[0].id;
+      const file = await gapi.client.drive.files.get({ fileId: driveFileId, alt: 'media' });
+      if (file.result && file.result.entries) { state = { ...state, ...file.result }; render(); }
+    } else { uploadToDrive(); }
+  } catch (e) {}
+}
+async function uploadToDrive() {
+  if (!state.syncActive || !gapiInited) return;
+  const metadata = { name: 'apex_health_v8.json', parents: ['appDataFolder'] };
+  try {
+    const accessToken = gapi.client.getToken().access_token;
+    const url = driveFileId ? `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media` : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const method = driveFileId ? 'PATCH' : 'POST';
+    const headers = new Headers({'Authorization': 'Bearer ' + accessToken});
+    let body = JSON.stringify(state);
+    if (!driveFileId) {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+      form.append('file', new Blob([body], {type: 'application/json'}));
+      body = form;
+    }
+    const resp = await fetch(url, { method, headers, body });
+    const res = await resp.json();
+    if (!driveFileId) driveFileId = res.id;
+  } catch (e) {}
+}
+
+// --- UI Logic ---
+function render() {
+  const ui = state.viewDate;
+  document.getElementById('monthLabel').innerText = ui.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const math = calculateMath(state.profile, state.mode);
+  
+  if (math) {
+    document.getElementById('targetHeader').innerText = `Target: ${math.target} kcal • Protein: ${math.protein}g`;
+    document.getElementById('valDynamicTDEE').innerText = math.tdee;
+    document.getElementById('valIntegrity').innerText = math.integrity + '%';
+    const adaptPct = ((math.tdee - math.baselineTdee) / math.baselineTdee) * 100;
+    document.getElementById('subAdaptation').innerText = math.isDynamic ? (adaptPct.toFixed(1) + '% vs Baseline') : 'Mifflin Baseline';
+    document.getElementById('metabolicAlert').style.display = adaptPct < -15 ? 'block' : 'none';
+  }
+
+  const cal = document.getElementById('cal');
+  cal.innerHTML = '';
+  const first = new Date(ui.getFullYear(), ui.getMonth(), 1);
+  const last = new Date(ui.getFullYear(), ui.getMonth() + 1, 0);
+  let offset = (first.getDay() + 6) % 7;
+  for(let i=0; i<offset; i++) cal.appendChild(document.createElement('div'));
+  for(let d=1; d<=last.getDate(); d++) {
+    const ds = `${ui.getFullYear()}-${String(ui.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const entry = state.entries[ds] || {};
+    const div = document.createElement('div');
+    div.className = `day ${ds === new Date().toISOString().split('T')[0] ? 'today' : ''}`;
+    div.innerHTML = `<div class="day-n">${d}</div><div class="day-meta">${entry.weight ? `<span class="badge res">${entry.weight}</span>` : ''}${entry.recovery ? `<span class="badge" style="color:${getRecoveryColor(entry.recovery)}">R:${entry.recovery}%</span>` : ''}</div>`;
+    div.onclick = () => { state.selectedDate = ds; openDay(ds); };
+    cal.appendChild(div);
+  }
+
+  const tbody = document.querySelector('#recentEntriesTable tbody');
+  const last10 = Object.values(state.entries).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10);
+  tbody.innerHTML = last10.map(e => `<tr><td>${e.date}</td><td>${e.mode||state.mode}</td><td>${e.recovery||'--'}%</td><td>${e.strain||'--'}</td><td>${e.eaten||'--'}</td><td>${e.burn||'--'}</td><td>${(e.burn-e.eaten)||'--'}</td><td>${e.weight||'--'}</td><td>${e.protein||'--'}</td></tr>`).join('');
+  
+  const latest = last10[0] || {};
+  if (latest.recovery) {
+    document.getElementById('valCnsStatus').innerText = latest.recovery > 66 ? 'PRIME' : latest.recovery > 33 ? 'STABLE' : 'CRITICAL';
+    document.getElementById('valCnsStatus').style.color = getRecoveryColor(latest.recovery);
+    document.getElementById('subCns').innerText = `Strain: ${latest.strain || '--'}`;
+  }
+
+  renderRuleCard(math);
+  updateCharts();
+  updateCoach(math, latest);
+}
+
+function updateCoach(math, latest) {
+  const el = document.getElementById('aiCoach');
+  if (!math) return;
+  let advice = "System nominal. Stick to the deficit.";
+  if (math.integrity < 80) advice = "<b>LOW DATA INTEGRITY:</b> Logging is sporadic. Strategy analysis disabled until score > 80%.";
+  else if (latest.recovery < 40 && latest.strain > 10) advice = "<b>CNS ALERT:</b> High Strain + Low Recovery. Metabolic stress over threshold. Command: Maintenance buffer today.";
+  else if (latest.recovery > 80) advice = "<b>PHYSIOLOGICAL PEAK:</b> Optimal state. Window for maximal volume.";
+  el.innerHTML = `<strong>Apex Advisor:</strong> ${advice}`;
+}
+
+function renderRuleCard(math) {
+  const card = document.getElementById('noThinkCard');
+  if (!math) return;
+  card.innerHTML = `<strong style="color:var(--accent);">MISSION: ${state.mode.toUpperCase()}</strong><br>Target: ${math.target} kcal<br>Confidence: ${math.isDynamic?'High (Dynamic)':'Low (Mifflin)'}<br>Integrity: ${math.integrity}%<br>Velocity: ${math.rate} kg/wk<br><br>Don't deviate. Just execute.`;
+}
+
+function updateCharts() {
+  const entries = Object.values(state.entries).sort((a,b) => a.date.localeCompare(b.date)).slice(-14);
+  const labels = entries.map(e => e.date.split('-')[2]);
+  if(charts.weight) { charts.weight.data.labels = labels; charts.weight.data.datasets[0].data = entries.map(e => e.weight); charts.weight.update(); }
+  if(charts.deficit) { charts.deficit.data.labels = labels; charts.deficit.data.datasets[0].data = entries.map(e => e.burn); charts.deficit.update(); }
+  const lastMacro = entries.findLast(e => e.protein || e.carbs || e.fat);
+  if(lastMacro && charts.macros) { charts.macros.data.datasets[0].data = [lastMacro.protein||0, lastMacro.carbs||0, lastMacro.fat||0]; charts.macros.update(); }
+}
+
+function initCharts() {
+  const line = (l, c) => ({ type: 'line', data: { labels: [], datasets: [{ label: l, data: [], borderColor: c, tension: 0.3, pointRadius: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8a99af', font: { size: 9 } } } } } });
+  charts.weight = new Chart(document.getElementById('chartWeight'), line('Weight', '#4aa3ff'));
+  charts.deficit = new Chart(document.getElementById('chartDeficit'), line('Burn', '#34d399'));
+  charts.macros = new Chart(document.getElementById('chartMacros'), {
+    type: 'doughnut', data: { labels: ['P','C','F'], datasets: [{ data: [1,1,1], backgroundColor: ['#4aa3ff','#34d399','#fbbf24'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, color: '#8a99af', font: { size: 10 } } } } }
+  });
+}
+
+function openDay(date) {
+  const e = state.entries[date] || {};
+  document.getElementById('dayTitle').innerText = `Edit: ${date}`;
+  document.getElementById('fWeight').value = e.weight || '';
+  document.getElementById('fRec').value = e.recovery || '';
+  document.getElementById('fStrain').value = e.strain || '';
+  document.getElementById('fEaten').value = e.eaten || '';
+  document.getElementById('fBurn').value = e.burn || '';
+  document.getElementById('fProt').value = e.protein || '';
+  document.getElementById('fCarbs').value = e.carbs || '';
+  document.getElementById('fFat').value = e.fat || '';
+  document.getElementById('fNotes').value = e.notes || '';
+  document.getElementById('modalDay').classList.add('active');
+}
+
+function openProfile() {
+  const p = state.profile;
+  document.getElementById('pSex').value = p.sex || '';
+  document.getElementById('pAge').value = p.age || '';
+  document.getElementById('pHeight').value = p.height || '';
+  document.getElementById('pWeight').value = p.weight || '';
+  document.getElementById('pBf').value = p.bf || '';
+  document.getElementById('pAct').value = p.act || 1.55;
+  document.getElementById('pGoalW').value = p.goalW || '';
+  document.getElementById('pGoalBf').value = p.goalBf || '';
+  updateProfilePreview();
+  document.getElementById('modalProfile').classList.add('active');
+}
+
+function updateProfilePreview() {
+  const p = { sex: document.getElementById('pSex').value, age: document.getElementById('pAge').value, height: document.getElementById('pHeight').value, weight: document.getElementById('pWeight').value, act: document.getElementById('pAct').value };
+  const m = calculateMath(p, state.mode);
+  document.getElementById('profilePreview').innerText = m ? `BMR: ${m.bmr} | TDEE: ${m.tdee} | Target: ${m.target} | Rate: ${m.rate}kg/wk` : "Awaiting Biometrics...";
+}
+
+function init() {
+  const saved = localStorage.getItem('apex_v8');
+  if (saved) state = { ...state, ...JSON.parse(saved) };
+  state.viewDate = new Date();
+  document.getElementById('btnSync').onclick = handleAuthClick;
+  document.getElementById('btnProfile').onclick = openProfile;
+  document.getElementById('saveDay').onclick = () => {
+    state.entries[state.selectedDate] = { date: state.selectedDate, weight: Number(document.getElementById('fWeight').value), recovery: Number(document.getElementById('fRec').value), strain: Number(document.getElementById('fStrain').value), eaten: Number(document.getElementById('fEaten').value), burn: Number(document.getElementById('fBurn').value), protein: Number(document.getElementById('fProt').value), carbs: Number(document.getElementById('fCarbs').value), fat: Number(document.getElementById('fFat').value), notes: document.getElementById('fNotes').value };
+    localStorage.setItem('apex_v8', JSON.stringify(state));
+    if (state.syncActive) uploadToDrive();
+    closeModal('modalDay'); render();
+  };
+  document.getElementById('saveProfile').onclick = () => {
+    state.profile = { sex: document.getElementById('pSex').value, age: Number(document.getElementById('pAge').value), height: Number(document.getElementById('pHeight').value), weight: Number(document.getElementById('pWeight').value), bf: Number(document.getElementById('pBf').value), act: Number(document.getElementById('pAct').value), goalW: Number(document.getElementById('pGoalW').value), goalBf: Number(document.getElementById('pGoalBf').value) };
+    localStorage.setItem('apex_v8', JSON.stringify(state));
+    closeModal('modalProfile'); render();
+  };
+  document.getElementById('modeSelector').onclick = (e) => {
+    const pill = e.target.closest('.pill');
+    if (pill) { document.querySelectorAll('.pill').forEach(p => p.classList.remove('active')); pill.classList.add('active'); state.mode = pill.dataset.mode; render(); }
+  };
+  document.getElementById('btnPrev').onclick = () => { state.viewDate.setMonth(state.viewDate.getMonth()-1); render(); };
+  document.getElementById('btnNext').onclick = () => { state.viewDate.setMonth(state.viewDate.getMonth()+1); render(); };
+  document.getElementById('btnToday').onclick = () => { state.viewDate = new Date(); render(); };
+  document.getElementById('btnReset').onclick = () => { if(confirm("Wipe all data?")) { localStorage.clear(); location.reload(); } };
+  initCharts(); render(); gapiLoaded(); gisLoaded();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function getRecoveryColor(r) { return r >= 66 ? '#34d399' : (r >= 33 ? '#fbbf24' : '#ef4444'); }
+function formatDate(d) { return d.toISOString().split('T')[0]; }
+
+window.onload = init;
+</script>
+<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
