@@ -138,6 +138,11 @@ textarea{min-height:84px;resize:vertical}
   font-size:12px;
 }
 </style>
+
+  <!-- Google Drive sync (Phase 3) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+
 </head>
 <body>
 <div class="wrap">
@@ -162,7 +167,9 @@ textarea{min-height:84px;resize:vertical}
     <div class="pill" id="monthLabel" style="cursor:default"></div>
     <button class="ghost" id="btnToday">Today</button>
     <button class="ghost" id="btnProfile">Profile</button>
-    <span class="small" style="padding:0 6px">•</span>
+    
+          <button class="btn" id="btnDrive" title="Sync backups to Google Drive (requires sign-in)">Drive: Off</button>
+<span class="small" style="padding:0 6px">•</span>
     <button class="ghost" id="btnExportJSON">Export JSON</button>
     <button class="ghost" id="btnExportCSV">Export CSV</button>
     <label class="pill" style="display:flex;gap:8px;align-items:center;cursor:pointer">
@@ -198,24 +205,38 @@ textarea{min-height:84px;resize:vertical}
       </div>
       <div class="bd">
         <div class="gridKpi">
-          <div class="kpi">
-            <div class="k">Avg deficit / surplus (7d)</div>
-            <div class="v" id="kDef">—</div>
-            <div class="s" id="kDefS">Per day</div>
-          </div>
-          <div class="kpi">
-            <div class="k">Weight trend (7d)</div>
-            <div class="v" id="kWt">—</div>
-            <div class="s">7-day change</div>
-          </div>
-          <div class="kpi">
-            <div class="k">Adherence (7d)</div>
-            <div class="v" id="kAdh">—</div>
-            <div class="s">Within ±100 kcal target</div>
-          </div>
-        </div>
-
-        <div class="twoCharts">
+  <div class="kpi">
+    <div class="k">Today's target</div>
+    <div class="v" id="kTarget">—</div>
+    <div class="s">kcal/day</div>
+  </div>
+  <div class="kpi">
+    <div class="k">TDEE estimate</div>
+    <div class="v" id="kTdee">—</div>
+    <div class="s">kcal/day</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Today deficit / surplus</div>
+    <div class="v" id="kToday">—</div>
+    <div class="s">burn − eaten</div>
+  </div>
+  <div class="kpi">
+    <div class="k" id="kDefT">Avg deficit / surplus (7d)</div>
+    <div class="v" id="kDef">—</div>
+    <div class="s" id="kDefS">Per day</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Weight trend (7d)</div>
+    <div class="v" id="kWt">—</div>
+    <div class="s">7‑day change</div>
+  </div>
+  <div class="kpi">
+    <div class="k">Adherence (7d)</div>
+    <div class="v" id="kAdh">—</div>
+    <div class="s">Within ±100 kcal target</div>
+  </div>
+</div>
+<div class="twoCharts">
           <div class="chartBox">
             <p class="ct">Weight trend (last 14 entries)</p>
             <canvas id="cWeight" class="bigCanvas" width="700" height="240"></canvas>
@@ -414,6 +435,7 @@ textarea{min-height:84px;resize:vertical}
 </div>
 
 <script>
+
 /* ===== Storage ===== */
 const LS_PROFILE = "bc_profile_v1";
 const LS_ENTRIES = "bc_entries_v1";
@@ -662,8 +684,36 @@ function render(){
 
 function computeKpisAndCharts(){
   const entries = getEntries().filter(e=>e.eaten!=null || e.burn!=null || e.weight!=null).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  const last14 = entries.slice(-14);
-  const last7 = entries.slice(-7);
+  // --- Profile-driven targets (Phase 2) ---
+  const pf = getProfile();
+  const mode = getMode();
+  const plan = planFor(mode, pf);
+  const tdee = Math.round(plan.tdee||0);
+  const tgt  = Math.round(plan.target||0);
+
+  const kTargetEl = el('kTarget');
+  if(kTargetEl) kTargetEl.textContent = tgt ? String(tgt) : '—';
+
+  const kTdeeEl = el('kTdee');
+  if(kTdeeEl) kTdeeEl.textContent = tdee ? String(tdee) : '—';
+
+  // Today deficit/surplus (requires today's entry: eaten + burn)
+  const todayIso = new Date().toISOString().slice(0,10);
+  const today = entries.find(e=>e.date===todayIso) || null;
+  const kTodayEl = el('kToday');
+  if(today && ((Number(today.burn)||0) || (Number(today.eaten)||0))){
+    const d = Math.round((Number(today.burn)||0) - (Number(today.eaten)||0));
+    if(kTodayEl){
+      kTodayEl.textContent = (d>=0?'+':'') + d;
+      kTodayEl.style.color = d>=0 ? 'var(--good)' : 'var(--bad)';
+    }
+  }else{
+    if(kTodayEl){
+      kTodayEl.textContent = '—';
+      kTodayEl.style.color = 'var(--text)';
+    }
+  }
+
 
   // avg deficit/surplus 7d
   const defs = last7.map(e => (e.burn!=null && e.eaten!=null) ? (e.burn - e.eaten) : null).filter(v=>v!=null);
@@ -946,7 +996,8 @@ el("btnExportCSV").addEventListener("click", ()=>{
     });
     rows.push(vals.join(","));
   });
-  download(`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`, rows.join("\n"), "text/csv");
+  download(`bodycomp_export_${new Date().toISOString().slice(0,10)}.csv`, rows.join("
+"), "text/csv");
 });
 
 el("fileImport").addEventListener("change", async (ev)=>{
@@ -962,7 +1013,9 @@ el("fileImport").addEventListener("change", async (ev)=>{
     }catch(_){ alert("Invalid JSON"); }
   }else if(f.name.toLowerCase().endsWith(".csv")){
     // Simple CSV import matching our export (quoted)
-    const lines = txt.split(/\r?\n/).filter(Boolean);
+    const lines = txt.split(/
+?
+/).filter(Boolean);
     if(lines.length<2){ alert("CSV empty"); return; }
     const head = lines.shift().split(",").map(s=>s.replace(/^"|"$/g,""));
     const out = [];
@@ -1067,7 +1120,336 @@ el("btnReset").addEventListener("click", ()=>{
   updateProfilePreview();
   render();
 })();
+
+
+/* =========================
+   Phase 3 — Drive autosync + versioned monthly backups
+   ========================= */
+const DRIVE_CFG = {
+  clientId: "41189729388-rksho3qtsot9qv7h2g4c0s8q81ghub6u.apps.googleusercontent.com",
+  apiKey: "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1LkoP7iGs",
+  scopes: "https://www.googleapis.com/auth/drive.file",
+  rootFolderName: "BodyComp_Control",
+  latestPrefix: "BodyComp_",
+};
+
+function toast(msg){
+  try{
+    let t=document.getElementById('toast');
+    if(!t){
+      t=document.createElement('div');
+      t.id='toast';
+      t.style.position='fixed';
+      t.style.left='50%';
+      t.style.bottom='18px';
+      t.style.transform='translateX(-50%)';
+      t.style.padding='10px 12px';
+      t.style.background='rgba(0,0,0,.75)';
+      t.style.color='#fff';
+      t.style.border='1px solid rgba(255,255,255,.18)';
+      t.style.borderRadius='12px';
+      t.style.fontSize='12px';
+      t.style.zIndex='99999';
+      t.style.maxWidth='90vw';
+      t.style.whiteSpace='nowrap';
+      t.style.overflow='hidden';
+      t.style.textOverflow='ellipsis';
+      t.style.opacity='0';
+      t.style.transition='opacity .18s ease';
+      document.body.appendChild(t);
+    }
+    t.textContent=msg;
+    requestAnimationFrame(()=>{t.style.opacity='1';});
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer=setTimeout(()=>{t.style.opacity='0';},1500);
+  }catch(e){ console.log(msg); }
+}
+
+const driveState = {
+  enabled: false,
+  token: null,
+  tokenClient: null,
+  gapiReady: false,
+  gisReady: false,
+  syncing: false,
+  rootFolderId: null,
+  monthFolderIds: {},     // month -> folderId
+  latestFileIds: {},      // month -> fileId
+};
+
+function getMonthKeySafe(){
+  const ui = getUI();
+  return (ui && ui.month) ? ui.month : new Date().toISOString().slice(0,7);
+}
+
+function setUIWithDrive(patch){
+  const ui = getUI();
+  const merged = Object.assign({}, ui, patch);
+  setUI(merged);
+  return merged;
+}
+
+function updateDriveBtn(){
+  const btn = document.getElementById("btnDrive");
+  if(!btn) return;
+  const ui = getUI();
+  const on = !!(ui && ui.driveEnabled);
+  btn.textContent = on ? "Drive: On" : "Drive: Off";
+  btn.classList.toggle("primary", on);
+}
+
+function driveSetEnabled(on){
+  setUIWithDrive({ driveEnabled: !!on });
+  updateDriveBtn();
+}
+
+function driveLibsReady(){
+  // gapi and google accounts scripts load async; detect readiness.
+  const gapiOk = typeof window.gapi !== "undefined";
+  const gisOk  = window.google && window.google.accounts && window.google.accounts.oauth2;
+  return { gapiOk, gisOk };
+}
+
+async function driveInit(){
+  const { gapiOk, gisOk } = driveLibsReady();
+  if(!gapiOk || !gisOk) throw new Error("Drive libraries not loaded yet. Refresh and try again.");
+  if(!driveState.gisReady){
+    driveState.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CFG.clientId,
+      scope: DRIVE_CFG.scopes,
+      callback: (resp) => { /* set by requestToken */ }
+    });
+    driveState.gisReady = true;
+  }
+  if(!driveState.gapiReady){
+    await new Promise((resolve, reject)=>{
+      gapi.load("client", { callback: resolve, onerror: reject });
+    });
+    await gapi.client.init({
+      apiKey: DRIVE_CFG.apiKey,
+      discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+    });
+    driveState.gapiReady = true;
+  }
+}
+
+async function driveRequestToken(){
+  await driveInit();
+  return new Promise((resolve, reject)=>{
+    driveState.tokenClient.callback = (resp)=>{
+      if(resp && resp.access_token){
+        driveState.token = resp.access_token;
+        gapi.client.setToken({ access_token: resp.access_token });
+        resolve(resp.access_token);
+      } else {
+        reject(new Error("No access token returned"));
+      }
+    };
+    driveState.tokenClient.requestAccessToken({ prompt: "" });
+  });
+}
+
+function driveDisconnect(){
+  driveState.token = null;
+  driveState.rootFolderId = null;
+  driveState.monthFolderIds = {};
+  driveState.latestFileIds = {};
+  driveSetEnabled(false);
+}
+
+async function driveEnsureFolder(name, parentId){
+  const q = [
+    "mimeType='application/vnd.google-apps.folder'",
+    "trashed=false",
+    `name='${name.replace(/'/g,"\\'")}'`,
+    parentId ? `'${parentId}' in parents` : null
+  ].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({
+    q,
+    fields: "files(id,name)",
+    pageSize: 10
+  });
+  const files = (res.result && res.result.files) || [];
+  if(files.length) return files[0].id;
+  const create = await gapi.client.drive.files.create({
+    resource: {
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: parentId ? [parentId] : undefined
+    },
+    fields: "id"
+  });
+  return create.result.id;
+}
+
+async function driveEnsureRoot(){
+  if(driveState.rootFolderId) return driveState.rootFolderId;
+  const id = await driveEnsureFolder(DRIVE_CFG.rootFolderName, null);
+  driveState.rootFolderId = id;
+  return id;
+}
+
+async function driveEnsureMonthFolder(monthKey){
+  if(driveState.monthFolderIds[monthKey]) return driveState.monthFolderIds[monthKey];
+  const rootId = await driveEnsureRoot();
+  const id = await driveEnsureFolder(monthKey, rootId);
+  driveState.monthFolderIds[monthKey] = id;
+  return id;
+}
+
+async function driveFindFileIdByName(name, parentId){
+  const q = [
+    "trashed=false",
+    `name='${name.replace(/'/g,"\\'")}'`,
+    parentId ? `'${parentId}' in parents` : null
+  ].filter(Boolean).join(" and ");
+  const res = await gapi.client.drive.files.list({
+    q,
+    fields: "files(id,name,modifiedTime)",
+    pageSize: 5,
+    orderBy: "modifiedTime desc"
+  });
+  const files = (res.result && res.result.files) || [];
+  return files.length ? files[0].id : null;
+}
+
+async function driveUploadJson({ parentId, filename, json, fileId=null }){
+  const boundary = "-------314159265358979323846";
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+  const metadata = {
+    name: filename,
+    mimeType: "application/json",
+    parents: parentId ? [parentId] : undefined
+  };
+  const body =
+    delimiter +
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadata) +
+    delimiter +
+    "Content-Type: application/json\r\n\r\n" +
+    JSON.stringify(json) +
+    close_delim;
+
+  if(fileId){
+    const res = await gapi.client.request({
+      path: "/upload/drive/v3/files/" + encodeURIComponent(fileId),
+      method: "PATCH",
+      params: { uploadType: "multipart" },
+      headers: { "Content-Type": "multipart/related; boundary=" + boundary },
+      body
+    });
+    return res.result.id;
+  } else {
+    const res = await gapi.client.request({
+      path: "/upload/drive/v3/files",
+      method: "POST",
+      params: { uploadType: "multipart" },
+      headers: { "Content-Type": "multipart/related; boundary=" + boundary },
+      body
+    });
+    return res.result.id;
+  }
+}
+
+function buildDrivePayload(){
+  const profile = loadProfile();
+  const ui = getUI();
+  const entries = loadEntries(); // full history
+  const monthKey = getMonthKeySafe();
+  const monthEntries = entries.filter(e => (e.date||"").slice(0,7) === monthKey);
+  return {
+    meta: {
+      app: "BodyComp_Control",
+      version: "phase3",
+      exportedAt: new Date().toISOString(),
+      month: monthKey
+    },
+    profile,
+    ui,
+    entries: monthEntries
+  };
+}
+
+async function driveSyncNow(reason="manual"){
+  if(driveState.syncing) return;
+  driveState.syncing = true;
+  try{
+    await driveRequestToken();
+    const monthKey = getMonthKeySafe();
+    const monthFolderId = await driveEnsureMonthFolder(monthKey);
+
+    const payload = buildDrivePayload();
+    const ts = new Date().toISOString().replace(/[:.]/g,"-");
+    const versionedName = `${DRIVE_CFG.latestPrefix}${monthKey}_${ts}.json`;
+    const latestName = `${DRIVE_CFG.latestPrefix}${monthKey}_latest.json`;
+
+    // Always create a versioned backup
+    await driveUploadJson({ parentId: monthFolderId, filename: versionedName, json: payload });
+
+    // Update latest
+    let latestId = driveState.latestFileIds[monthKey] || await driveFindFileIdByName(latestName, monthFolderId);
+    latestId = await driveUploadJson({ parentId: monthFolderId, filename: latestName, json: payload, fileId: latestId });
+    driveState.latestFileIds[monthKey] = latestId;
+
+    // Mark enabled after first successful sync
+    driveSetEnabled(true);
+    toast(`Drive sync OK (${reason})`);
+  }catch(err){
+    console.error(err);
+    toast("Drive sync failed. Check Console.");
+    driveSetEnabled(false);
+  }finally{
+    driveState.syncing = false;
+    updateDriveBtn();
+  }
+}
+
+async function onDriveClick(){
+  const ui = getUI();
+  const on = !!(ui && ui.driveEnabled);
+  if(on){
+    driveDisconnect();
+    toast("Drive sync off");
+    return;
+  }
+  await driveSyncNow("connect");
+}
+
+function queueDriveAutosync(){
+  const ui = getUI();
+  if(!(ui && ui.driveEnabled)) return;
+  // debounce so we don't spam Drive
+  window.__driveDebounce && clearTimeout(window.__driveDebounce);
+  window.__driveDebounce = setTimeout(()=>{ driveSyncNow("auto"); }, 1200);
+}
+
+/* Hook autosync after any save */
+const __orig_saveEntries = saveEntries;
+saveEntries = function(entries){
+  __orig_saveEntries(entries);
+  queueDriveAutosync();
+};
+
+const __orig_saveProfile = saveProfile;
+saveProfile = function(profile){
+  __orig_saveProfile(profile);
+  queueDriveAutosync();
+};
+
+const __orig_setUI = setUI;
+setUI = function(ui){
+  __orig_setUI(ui);
+  // update button if month changes
+  updateDriveBtn();
+};
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  updateDriveBtn();
+  const btn = document.getElementById("btnDrive");
+  if(btn) btn.addEventListener("click", onDriveClick);
+});
+
 </script>
 </body>
 </html>
-
