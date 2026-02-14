@@ -1094,12 +1094,28 @@ document.querySelectorAll("#modePills .pill").forEach(pill=>{
 });
 
 /* ===== Monthly snapshot ===== */
-el("btnSnapshot").addEventListener("click", ()=>{
+el("btnSnapshot").addEventListener("click", async ()=>{
   const ui=getUI();
   const ym = `${ui.y}-${pad2(ui.m+1)}`;
   const entries = getEntries().filter(e=>e.date.startsWith(ym));
   const payload = {month: ym, profile:getProfile(), mode: ui.mode, entries, exportedAt:new Date().toISOString()};
   download(`bodycomp_snapshot_${ym}.json`, JSON.stringify(payload,null,2), "application/json");
+
+  // If Drive is ON, also upload a versioned snapshot into the month folder
+  try{
+    if(DRIVE.enabled){
+      await driveInit();
+      await driveEnsureScopes();
+      const root = await ensureRootFolder();
+      const monthFolder = await ensureMonthFolder(root, ym);
+      const ts = new Date().toISOString().replace(/[:.]/g,"-");
+      await driveUpload(monthFolder, `bodycomp_snapshot_${ym}__${ts}.json`, JSON.stringify(payload,null,2), "application/json");
+      toast("Snapshot uploaded to Drive ✅");
+    }
+  }catch(e){
+    console.warn(e);
+    toast("Drive snapshot upload failed");
+  }
 });
 
 /* ===== Reset ===== */
@@ -1127,7 +1143,7 @@ el("btnReset").addEventListener("click", ()=>{
    ========================= */
 const DRIVE_CFG = {
   clientId: "41189729388-rksho3qtsot9qv7h2g4c0s8q81ghub6u.apps.googleusercontent.com",
-  apiKey: "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1LkoP7iGs",
+  apiKey: "AIzaSyD3SRe0koUE0MdEE0JWllD5V8L1koP7iGs",
   scopes: "https://www.googleapis.com/auth/drive.file",
   rootFolderName: "BodyComp_Control",
   latestPrefix: "BodyComp_",
@@ -1403,7 +1419,21 @@ async function driveSyncNow(reason="manual"){
     driveState.syncing = false;
     updateDriveBtn();
   }
-}
+
+  // Daily versioned backup (1 per day) to avoid losing history across months/devices
+  try{
+    const todayKey = new Date().toISOString().slice(0,10);
+    if(reason==="auto"){
+      const last = localStorage.getItem("drive_daily_snapshot_last")||"";
+      if(last!==todayKey){
+        const ts = new Date().toISOString().replace(/[:.]/g,"-");
+        await driveUpload(monthFolder, `bodycomp_daily_${todayKey}__${ts}.json`, JSON.stringify(payload,null,2), "application/json");
+        localStorage.setItem("drive_daily_snapshot_last", todayKey);
+      }
+    }
+  }catch(e){ console.warn("Daily snapshot failed", e); }
+
+  }
 
 async function onDriveClick(){
   const ui = getUI();
