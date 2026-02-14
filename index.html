@@ -438,7 +438,8 @@ textarea{min-height:84px;resize:vertical}
 
 /* ===== Storage ===== */
 const LS_PROFILE = "bc_profile_v1";
-const LS_ENTRIES = "bc_entries_v1";
+  const LS_ENTRIES = "bc_entries_v2";
+  const LS_ENTRIES_OLD = "bc_entries_v1";
 const LS_UI      = "bc_ui_v1";
 
 /* ===== Utilities ===== */
@@ -449,11 +450,29 @@ const toNum = (x)=>{ const n = parseFloat(String(x||"").replace(/,/g,"")); retur
 
 function loadJSON(key, fallback){
   try{
+    // One-time migration for entries key
+    if(key===LS_ENTRIES && !localStorage.getItem(LS_ENTRIES) && localStorage.getItem(LS_ENTRIES_OLD)){
+      localStorage.setItem(LS_ENTRIES, localStorage.getItem(LS_ENTRIES_OLD));
+    }
     const raw = localStorage.getItem(key);
     if(!raw) return fallback;
     const v = JSON.parse(raw);
-    return v ?? fallback;
-  }catch(_){ return fallback; }
+
+    // Normalize entries to array for backward compatibility (older builds stored objects)
+    if(key===LS_ENTRIES){
+      if(Array.isArray(v)) return v;
+      if(v && typeof v === "object"){
+        if(Array.isArray(v.entries)) return v.entries;
+        if(Array.isArray(v.data)) return v.data;
+        const vals = Object.values(v).filter(x=>x && typeof x==="object");
+        return vals;
+      }
+      return fallback;
+    }
+    return v;
+  }catch(e){
+    return fallback;
+  }
 }
 function saveJSON(key, v){ localStorage.setItem(key, JSON.stringify(v)); }
 
